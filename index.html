@@ -450,7 +450,7 @@ function renderList() {
     <div class="record-item ${r.id===selectedId?'active':''}" onclick="selectRecord('${r.id}')">
       <div class="record-item-id">${r.id}</div>
       <div class="record-item-cliente">${r.cliente||'—'}</div>
-      <div class="record-item-alarma">${r.alarma?'🔑 '+r.alarma:'⚠ SIN ALARMA'}</div>
+      <div class="record-item-alarma">${r.alarma?'🔑 ••••':'⚠ SIN ALARMA'}</div>
       ${r.novedad?`<div class="record-item-novedad">📋 ${r.novedad}</div>`:''}
       ${progIds.has(r.id)?`<div class="record-item-prog">✓ Programado hoy</div>`:''}
     </div>
@@ -469,8 +469,9 @@ function renderDetail() {
 
   const qrUrl = `${GITHUB_URL}?scan=${encodeURIComponent(r.id)}`;
   const progEntry = programacion.find(p=>String(p.parid).trim()===r.id);
+  const alarmaUid = 'det_' + r.id;
   const alarmaHtml = r.alarma
-    ? `<div class="detail-alarma">${r.alarma}</div>`
+    ? `<div class="detail-alarma">${maskAlarma(r.alarma, alarmaUid)}</div>`
     : `<div class="detail-sin-alarma">SIN ALARMA</div>`;
   const novedadHtml = r.novedad
     ? `<div class="novedad-box has-novedad">${r.novedad}</div>`
@@ -529,13 +530,14 @@ function renderProgTable() {
       const caja = db.find(x=>x.id===p.parid.trim());
       const alarma = caja ? (caja.alarma || 'SIN ALARMA') : '—';
       const alarmaColor = caja && caja.alarma ? 'var(--accent)' : 'var(--danger)';
+      const progUid = 'prog_' + p.parid;
       return `<tr>
         <td><span class="prog-id">${p.parid}</span></td>
         <td>${p.rutid}</td>
         <td style="color:var(--text2)">${p.parada||'—'}</td>
         <td>${p.jefe||'—'}</td>
         <td style="font-family:var(--mono);font-size:12px">${p.legajo_jefe||'—'}</td>
-        <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${alarma}</td>
+        <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${caja && caja.alarma ? maskAlarma(caja.alarma, progUid) : alarma}</td>
       </tr>`;
     }).join('')}
     </tbody>
@@ -964,6 +966,7 @@ function renderHistorial() {
       const caja = db.find(x=>x.id===String(h.parid||'').trim());
       const alarma = caja ? (caja.alarma||'SIN ALARMA') : '—';
       const alarmaColor = caja && caja.alarma ? 'var(--accent)' : 'var(--danger)';
+      const histUid = 'hist_' + (h.parid||'') + '_' + (h.fecha_archivo||'').replace(/[\s/:,]/g,'');
       return `<tr>
         <td style="font-size:12px;color:var(--text3)">${h.fecha_archivo||'—'}</td>
         <td><span class="prog-id">${h.parid||'—'}</span></td>
@@ -971,11 +974,36 @@ function renderHistorial() {
         <td style="color:var(--text2)">${h.parada||'—'}</td>
         <td>${h.jefe||'—'}</td>
         <td style="font-family:var(--mono);font-size:12px">${h.legajo_jefe||'—'}</td>
-        <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${alarma}</td>
+        <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${caja && caja.alarma ? maskAlarma(caja.alarma, histUid) : alarma}</td>
       </tr>`;
     }).join('')}
     </tbody>
   </table>`;
+}
+
+// ─── ALARMA MASK ─────────────────────────────────────────────────────────────
+function maskAlarma(valor, uid) {
+  if (!valor || valor === 'SIN ALARMA' || valor === '—') return valor;
+  const stars = valor.split('').map(() => '●').join('');
+  return `<span id="alarma-val-${uid}" data-real="${valor}" data-visible="false" style="letter-spacing:3px">${stars}</span>
+    <button onclick="toggleAlarma('${uid}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:8px;vertical-align:middle;opacity:.7" title="Mostrar/ocultar clave" id="eye-${uid}">👁</button>`;
+}
+
+function toggleAlarma(uid) {
+  const span = document.getElementById('alarma-val-' + uid);
+  const btn = document.getElementById('eye-' + uid);
+  if (!span) return;
+  const visible = span.dataset.visible === 'true';
+  if (visible) {
+    const stars = span.dataset.real.split('').map(() => '●').join('');
+    span.textContent = stars;
+    span.dataset.visible = 'false';
+    btn.textContent = '👁';
+  } else {
+    span.textContent = span.dataset.real;
+    span.dataset.visible = 'true';
+    btn.textContent = '🙈';
+  }
 }
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
