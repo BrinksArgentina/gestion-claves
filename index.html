@@ -181,6 +181,7 @@
   <div class="tab active" onclick="switchTab('claves')">🔑 Claves</div>
   <div class="tab" onclick="switchTab('programacion')">📅 Programación</div>
   <div class="tab" onclick="switchTab('legajos')">👤 Legajos</div>
+  <div class="tab" onclick="switchTab('historial')">📜 Historial</div>
 </div>
 
 <!-- TAB: CLAVES -->
@@ -263,6 +264,20 @@
   </div>
 </div>
 
+<!-- TAB: HISTORIAL -->
+<div id="tab-historial" style="display:none" class="panel-full">
+  <div class="card">
+    <div class="card-title">Historial de recaudaciones</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <input class="search-box" type="text" id="hist-search" placeholder="Buscar ParID, jefe, ruta…" oninput="renderHistorial()" style="max-width:280px">
+      <input class="search-box" type="date" id="hist-fecha" oninput="renderHistorial()" style="max-width:160px">
+      <button class="btn btn-secondary" onclick="document.getElementById('hist-fecha').value='';renderHistorial()">✕ Limpiar fecha</button>
+      <button class="btn btn-secondary" onclick="loadHistorial()" style="margin-left:auto">⟳ Actualizar</button>
+    </div>
+    <div id="hist-table-container"><div style="color:var(--text3);font-size:13px">Cargando…</div></div>
+  </div>
+</div>
+
 <div class="toast-container" id="toasts"></div>
 
 <!-- MODAL NUEVO -->
@@ -323,7 +338,7 @@
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyiKB7k3EGA-_VQI5h4J2n9VduMsQk873EXEVsKYis0mDp_xPh62xofaMyGOCrcSf2K/exec';
 const GITHUB_URL = window.location.origin + window.location.pathname;
 
-let db = [], legajos = [], programacion = [];
+let db = [], legajos = [], programacion = [], historial = [];
 let selectedId = null, novedadTarget = null;
 let diarioData = null, reporteData = null;
 let activeTab = 'claves';
@@ -390,9 +405,11 @@ function switchTab(tab) {
   document.getElementById('tab-claves').style.display = tab==='claves' ? 'grid' : 'none';
   document.getElementById('tab-programacion').style.display = tab==='programacion' ? 'block' : 'none';
   document.getElementById('tab-legajos').style.display = tab==='legajos' ? 'block' : 'none';
+  document.getElementById('tab-historial').style.display = tab==='historial' ? 'block' : 'none';
   document.querySelectorAll('.tab').forEach((el,i) => {
-    el.classList.toggle('active', ['claves','programacion','legajos'][i]===tab);
+    el.classList.toggle('active', ['claves','programacion','legajos','historial'][i]===tab);
   });
+  if(tab==='historial' && historial.length===0) loadHistorial();
 }
 
 // ─── LIST ────────────────────────────────────────────────────────────────────
@@ -892,6 +909,48 @@ function toast(msg,type='success'){
   el.innerHTML=`<span>${icons[type]||'•'}</span><span>${msg}</span>`;
   document.getElementById('toasts').appendChild(el);
   setTimeout(()=>el.remove(),3000);
+}
+
+// ─── HISTORIAL ───────────────────────────────────────────────────────────────
+async function loadHistorial() {
+  document.getElementById('hist-table-container').innerHTML = '<div style="color:var(--text3);font-size:13px">Cargando…</div>';
+  try {
+    const res = await jsonp(SHEET_URL + '?action=getHistorial');
+    historial = res.data || [];
+    renderHistorial();
+  } catch(e) {
+    document.getElementById('hist-table-container').innerHTML = '<div style="color:var(--danger);font-size:13px">Error al cargar historial</div>';
+  }
+}
+
+function renderHistorial() {
+  const q = (document.getElementById('hist-search')?.value||'').toLowerCase();
+  const fechaFiltro = document.getElementById('hist-fecha')?.value||'';
+  let filtered = historial.filter(h => {
+    const matchQ = !q || String(h.parid||'').toLowerCase().includes(q) || String(h.jefe||'').toLowerCase().includes(q) || String(h.rutid||'').toLowerCase().includes(q);
+    const matchF = !fechaFiltro || String(h.fecha_archivo||'').includes(fechaFiltro.split('-').reverse().join('/'));
+    return matchQ && matchF;
+  });
+  const el = document.getElementById('hist-table-container');
+  if(!filtered.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin registros</div>';return;}
+  el.innerHTML=`<table class="prog-table">
+    <thead><tr><th>Fecha archivo</th><th>ParID</th><th>RutaID</th><th>Parada</th><th>Jefe de Equipo</th><th>Legajo</th><th>Alarma</th></tr></thead>
+    <tbody>${filtered.map(h=>{
+      const caja = db.find(x=>x.id===String(h.parid||'').trim());
+      const alarma = caja ? (caja.alarma||'SIN ALARMA') : '—';
+      const alarmaColor = caja && caja.alarma ? 'var(--accent)' : 'var(--danger)';
+      return `<tr>
+        <td style="font-size:12px;color:var(--text3)">${h.fecha_archivo||'—'}</td>
+        <td><span class="prog-id">${h.parid||'—'}</span></td>
+        <td>${h.rutid||'—'}</td>
+        <td style="color:var(--text2)">${h.parada||'—'}</td>
+        <td>${h.jefe||'—'}</td>
+        <td style="font-family:var(--mono);font-size:12px">${h.legajo_jefe||'—'}</td>
+        <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${alarma}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
