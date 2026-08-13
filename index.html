@@ -482,7 +482,7 @@ function renderProgTable() {
   const el = document.getElementById('prog-table-container');
   if(!programacion.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin programación cargada. Importá los archivos arriba.</div>';return;}
   el.innerHTML=`<table class="prog-table">
-    <thead><tr><th>ParID</th><th>RutaID</th><th>Jefe de Equipo</th><th>Legajo</th><th>Alarma</th></tr></thead>
+    <thead><tr><th>ParID</th><th>RutaID</th><th>Parada</th><th>Jefe de Equipo</th><th>Legajo</th><th>Alarma</th></tr></thead>
     <tbody>${programacion.map(p=>{
       const caja = db.find(x=>x.id===p.parid.trim());
       const alarma = caja ? (caja.alarma || 'SIN ALARMA') : '—';
@@ -490,6 +490,7 @@ function renderProgTable() {
       return `<tr>
         <td><span class="prog-id">${p.parid}</span></td>
         <td>${p.rutid}</td>
+        <td style="color:var(--text2)">${p.parada||'—'}</td>
         <td>${p.jefe||'—'}</td>
         <td style="font-family:var(--mono);font-size:12px">${p.legajo_jefe||'—'}</td>
         <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${alarma}</td>
@@ -529,13 +530,15 @@ function handleDiario(input) {
       const paridCol = headers.indexOf('ParId');
       const rutidCol = headers.indexOf('RutId');
       const fechaCol = headers.indexOf('DiaFec');
+      const paradaCol = headers.indexOf('Parada');
       // Build parid->rutid map (unique)
       const map = {};
       rows.slice(hIdx+1).forEach(r=>{
         const parid = r[paridCol]?String(r[paridCol]).trim():'';
         const rutid = r[rutidCol]?String(r[rutidCol]).trim():'';
         const fecha = r[fechaCol]?String(r[fechaCol]).trim():'';
-        if(parid && rutid && !map[parid]) map[parid]={parid,rutid,fecha};
+        const parada = paradaCol>=0 && r[paradaCol]?String(r[paradaCol]).trim():'';
+        if(parid && rutid && !map[parid]) map[parid]={parid,rutid,fecha,parada};
       });
       diarioData = Object.values(map);
       document.getElementById('diario-result').innerHTML=`<div class="import-result ok">✓ ${diarioData.length} registros únicos leídos</div>`;
@@ -598,7 +601,7 @@ async function procesarProgramacion() {
         return jefe.toUpperCase().includes(nombre.split(' ')[0]) || nombre.includes(jefe.split(',')[0]?.trim().toUpperCase());
       });
       const legajo_jefe = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
-      return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe };
+      return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe, parada:d.parada||'' };
     }).filter(r=>r.jefe);
 
   document.getElementById('prog-status').textContent = `Procesando ${rows.length} registros…`;
