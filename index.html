@@ -162,6 +162,8 @@
     <div class="sidebar-footer">
       <button class="btn-new" onclick="openNewModal()">+ Nuevo</button>
       <button class="btn-sync" onclick="loadFromSheets()" title="Sincronizar">⟳</button>
+      <button class="btn-sync" onclick="document.getElementById('excel-input').click()" title="Importar Excel">📥</button>
+      <input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this)">
     </div>
   </aside>
 
@@ -690,6 +692,91 @@ function toast(msg, type = 'success') {
   el.innerHTML = `<span>${icons[type]||'•'}</span><span>${msg}</span>`;
   document.getElementById('toasts').appendChild(el);
   setTimeout(() => el.remove(), 3000);
+}
+
+// ─── IMPORT EXCEL ────────────────────────────────────────────────────────────
+function importExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      // Parse XLSX manually (binary)
+      const data = new Uint8Array(e.target.result);
+      // Use SheetJS via CDN
+      if (!window.XLSX) {
+        toast('Cargando librería…', 'success');
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      }
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      
+      if (rows.length < 2) { toast('Excel vacío', 'warning'); return; }
+      
+      const headers = rows[0].map(h => String(h).trim().toUpperCase());
+      const idIdx = headers.findIndex(h => h === 'ID');
+      const clIdx = headers.findIndex(h => h === 'CLIENTE');
+      const llIdx = headers.findIndex(h => h.includes('LLAVE'));
+      const alIdx = headers.findIndex(h => h === 'ALARMA');
+      const trIdx = headers.findIndex(h => h.includes('TRANSP'));
+
+      if (idIdx === -1) { toast('No encontré columna ID', 'warning'); return; }
+
+      const nuevos = [];
+      const actualizados = [];
+
+      rows.slice(1).forEach(r => {
+        if (!r[idIdx]) return;
+        const fmt = (v) => {
+          if (v === undefined || v === null || v === '') return '';
+          const s = String(v).trim();
+          const n = parseFloat(s);
+          return (!isNaN(n) && Number.isInteger(n)) ? String(Math.round(n)) : s;
+        };
+        const id = fmt(r[idIdx]);
+        const registro = {
+          id,
+          cliente: clIdx >= 0 ? fmt(r[clIdx]) : '',
+          llavero: llIdx >= 0 ? fmt(r[llIdx]) : '',
+          alarma:  alIdx >= 0 ? fmt(r[alIdx]) : '',
+          transporte: trIdx >= 0 ? fmt(r[trIdx]) : '',
+          novedad: '',
+          updatedAt: new Date().toLocaleString('es-AR')
+        };
+        const existing = db.find(x => x.id === id);
+        if (existing) {
+          Object.assign(existing, { ...registro, novedad: existing.novedad });
+          actualizados.push(id);
+        } else {
+          db.push(registro);
+          nuevos.push(id);
+        }
+      });
+
+      setSyncStatus('loading');
+      const payload = encodeURIComponent(JSON.stringify({ action: 'save', rows: db }));
+      await jsonp(SHEET_URL + '?action=save&payload=' + payload);
+      setSyncStatus('ok');
+      updateStats();
+      renderList();
+      toast(`✓ ${nuevos.length} nuevos, ${actualizados.length} actualizados`, 'success');
+      input.value = '';
+    } catch(err) {
+      setSyncStatus('err');
+      toast('Error al importar: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
