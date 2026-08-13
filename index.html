@@ -7,139 +7,163 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3450;
-    --accent: #4f8ef7;
-    --success: #3ecf8e;
-    --warning: #f7a24f;
-    --danger: #f75f5f;
-    --text: #e8eaf6;
-    --text2: #8890b0;
-    --text3: #555e80;
-    --radius: 10px;
-    --mono: 'Courier New', monospace;
+    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3450;
+    --accent:#4f8ef7;--success:#3ecf8e;--warning:#f7a24f;--danger:#f75f5f;
+    --text:#e8eaf6;--text2:#8890b0;--text3:#555e80;--radius:10px;
+    --mono:'Courier New',monospace;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh;}
 
   /* SCAN MODE */
-  body.scan-mode { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
-  .scan-label { color: #444; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 24px; font-family: var(--mono); }
-  .scan-code { color: #fff; font-size: clamp(48px, 16vw, 110px); font-weight: 900; letter-spacing: 4px; text-align: center; font-family: var(--mono); line-height: 1; word-break: break-all; }
-  .scan-alarma-label { color: #333; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-top: 20px; }
-  .scan-cliente { color: #888; font-size: clamp(14px, 4vw, 22px); margin-top: 10px; text-align: center; font-family: 'Segoe UI', sans-serif; max-width: 340px; }
-  .scan-novedad { background: #1a1a00; border: 1px solid #444400; border-radius: 10px; padding: 14px 20px; margin-top: 20px; max-width: 340px; text-align: center; }
-  .scan-novedad-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--warning); margin-bottom: 6px; }
-  .scan-novedad-text { color: #fff; font-size: 16px; line-height: 1.4; }
-  .scan-sin-alarma { color: var(--danger); font-size: clamp(28px, 10vw, 60px); font-weight: 900; letter-spacing: 2px; margin-top: 8px; font-family: var(--mono); }
-  .scan-transporte { color: #555; font-size: 13px; margin-top: 16px; letter-spacing: 1px; }
-  .scan-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; margin: 32px auto 0; }
+  body.scan-mode{background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .scan-label{color:#444;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;font-family:var(--mono);}
+  .scan-code{color:#fff;font-size:clamp(52px,16vw,110px);font-weight:900;letter-spacing:4px;text-align:center;font-family:var(--mono);line-height:1;word-break:break-all;}
+  .scan-sub{color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-top:16px;}
+  .scan-cliente{color:#888;font-size:clamp(14px,4vw,20px);margin-top:8px;text-align:center;max-width:340px;}
+  .scan-novedad{background:#1a1a00;border:1px solid #444400;border-radius:10px;padding:14px 20px;margin-top:20px;max-width:340px;text-align:center;}
+  .scan-novedad-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--warning);margin-bottom:6px;}
+  .scan-novedad-text{color:#fff;font-size:16px;line-height:1.4;}
+  .scan-sin-alarma{color:var(--danger);font-size:clamp(28px,10vw,60px);font-weight:900;letter-spacing:2px;font-family:var(--mono);}
+  .scan-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;margin:28px auto 0;}
+  .scan-denied{color:var(--danger);font-size:clamp(28px,10vw,50px);font-weight:900;text-align:center;font-family:var(--mono);}
+  .scan-denied-msg{color:#888;font-size:14px;margin-top:12px;text-align:center;max-width:300px;}
+
+  /* LEGAJO INPUT */
+  .legajo-screen{display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px 24px;max-width:360px;width:100%;}
+  .legajo-title{font-size:18px;font-weight:700;color:#fff;text-align:center;}
+  .legajo-sub{font-size:13px;color:#666;text-align:center;}
+  .legajo-input{width:100%;background:#111;border:2px solid #333;border-radius:10px;padding:16px;color:#fff;font-size:28px;font-weight:700;text-align:center;font-family:var(--mono);letter-spacing:4px;outline:none;}
+  .legajo-input:focus{border-color:var(--accent);}
+  .legajo-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;}
+  .legajo-btn:hover{opacity:.85;}
+  .legajo-loading{color:#666;font-size:13px;}
 
   /* HEADER */
-  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 56px; position: sticky; top: 0; z-index: 100; }
-  .logo { font-size: 17px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
-  .logo span { color: var(--accent); }
-  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-  .stat-chip { font-size: 12px; color: var(--text2); }
-  .stat-chip strong { color: var(--text); }
-  .sync-status { font-size: 12px; padding: 4px 10px; border-radius: 20px; }
-  .sync-ok { background: rgba(62,207,142,.15); color: var(--success); }
-  .sync-err { background: rgba(247,95,95,.15); color: var(--danger); }
-  .sync-loading { background: rgba(79,142,247,.15); color: var(--accent); }
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:16px;height:56px;position:sticky;top:0;z-index:100;}
+  .logo{font-size:17px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+  .logo span{color:var(--accent);}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+  .stat-chip{font-size:12px;color:var(--text2);}
+  .stat-chip strong{color:var(--text);}
+  .sync-status{font-size:12px;padding:4px 10px;border-radius:20px;}
+  .sync-ok{background:rgba(62,207,142,.15);color:var(--success);}
+  .sync-err{background:rgba(247,95,95,.15);color:var(--danger);}
+  .sync-loading{background:rgba(79,142,247,.15);color:var(--accent);}
+
+  /* TABS */
+  .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);padding:0 24px;gap:4px;}
+  .tab{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+  .tab:hover{color:var(--text2);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 
   /* LAYOUT */
-  .app { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 56px); }
-
-  /* SIDEBAR */
-  .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-  .sidebar-top { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
-  .search-box { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none; transition: border-color .2s; }
-  .search-box:focus { border-color: var(--accent); }
-  .search-box::placeholder { color: var(--text3); }
-  .record-list { flex: 1; overflow-y: auto; padding: 6px; }
-  .record-list::-webkit-scrollbar { width: 4px; }
-  .record-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  .record-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background .15s; margin-bottom: 2px; border: 1px solid transparent; }
-  .record-item:hover { background: var(--surface2); }
-  .record-item.active { background: var(--surface2); border-color: var(--accent); }
-  .record-item-id { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
-  .record-item-cliente { font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .record-item-alarma { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
-  .record-item-novedad { font-size: 10px; color: var(--warning); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sidebar-footer { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 6px; }
-  .btn-new { flex: 1; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-new:hover { opacity: .85; }
-  .btn-sync { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; cursor: pointer; }
-  .btn-sync:hover { color: var(--text); }
-  .no-results { padding: 20px; text-align: center; color: var(--text3); font-size: 13px; }
+  .app{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 96px);}
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .sidebar-top{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+  .search-box{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s;}
+  .search-box:focus{border-color:var(--accent);}
+  .search-box::placeholder{color:var(--text3);}
+  .record-list{flex:1;overflow-y:auto;padding:6px;}
+  .record-list::-webkit-scrollbar{width:4px;}
+  .record-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .record-item{padding:10px 12px;border-radius:8px;cursor:pointer;transition:background .15s;margin-bottom:2px;border:1px solid transparent;}
+  .record-item:hover{background:var(--surface2);}
+  .record-item.active{background:var(--surface2);border-color:var(--accent);}
+  .record-item-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;}
+  .record-item-cliente{font-size:12px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .record-item-alarma{font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono);}
+  .record-item-novedad{font-size:10px;color:var(--warning);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .record-item-prog{font-size:10px;color:var(--success);margin-top:3px;}
+  .sidebar-footer{padding:10px;border-top:1px solid var(--border);display:flex;gap:6px;}
+  .btn-new{flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn-new:hover{opacity:.85;}
+  .btn-sync{background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer;}
+  .btn-sync:hover{color:var(--text);}
+  .no-results{padding:20px;text-align:center;color:var(--text3);font-size:13px;}
 
   /* MAIN */
-  main { overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
-  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text3); gap: 10px; text-align: center; }
-  .empty-icon { font-size: 44px; }
+  main{overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px;}
+  .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:10px;text-align:center;}
+  .empty-icon{font-size:44px;}
+
+  /* PANEL FULL */
+  .panel-full{padding:24px;overflow-y:auto;}
 
   /* CARD */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
-  .card-title { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;}
+  .card-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:14px;}
 
   /* DETAIL */
-  .detail-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
-  .detail-id { font-family: var(--mono); font-size: 11px; color: var(--text3); letter-spacing: 1px; margin-bottom: 4px; }
-  .detail-alarma { font-family: var(--mono); font-size: 32px; font-weight: 900; color: var(--accent); letter-spacing: 2px; }
-  .detail-sin-alarma { font-family: var(--mono); font-size: 22px; font-weight: 900; color: var(--danger); }
-  .detail-cliente { font-size: 14px; color: var(--text2); margin-top: 4px; }
-  .detail-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
-  .detail-meta-item { font-size: 12px; color: var(--text3); }
-  .detail-meta-item strong { color: var(--text2); }
-  .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .detail-id{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:4px;}
+  .detail-alarma{font-family:var(--mono);font-size:32px;font-weight:900;color:var(--accent);letter-spacing:2px;}
+  .detail-sin-alarma{font-family:var(--mono);font-size:22px;font-weight:900;color:var(--danger);}
+  .detail-cliente{font-size:14px;color:var(--text2);margin-top:4px;}
+  .detail-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;}
+  .detail-meta-item{font-size:12px;color:var(--text3);}
+  .detail-meta-item strong{color:var(--text2);}
+  .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .novedad-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:14px;color:var(--text);min-height:60px;line-height:1.5;}
+  .novedad-box.has-novedad{border-color:rgba(247,162,79,.4);background:rgba(247,162,79,.05);}
+  .novedad-empty{color:var(--text3);font-style:italic;}
+  .qr-section{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;}
+  .qr-wrapper{background:#fff;padding:10px;border-radius:8px;display:inline-block;flex-shrink:0;}
+  .qr-info{flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;}
+  .qr-url-box{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text3);word-break:break-all;}
 
-  /* NOVEDAD */
-  .novedad-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 14px; color: var(--text); min-height: 80px; line-height: 1.5; }
-  .novedad-box.has-novedad { border-color: rgba(247,162,79,.4); background: rgba(247,162,79,.05); }
-  .novedad-empty { color: var(--text3); font-style: italic; }
+  /* PROG TABLE */
+  .prog-table{width:100%;border-collapse:collapse;}
+  .prog-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:8px 0;border-bottom:1px solid var(--border);}
+  .prog-table td{padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);}
+  .prog-table tr:last-child td{border-bottom:none;}
+  .prog-id{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;}
+  .badge-prog{font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(62,207,142,.15);color:var(--success);font-weight:700;}
 
-  /* QR */
-  .qr-section { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
-  .qr-wrapper { background: #fff; padding: 10px; border-radius: 8px; display: inline-block; flex-shrink: 0; }
-  .qr-info { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 10px; }
-  .qr-url-box { font-family: var(--mono); font-size: 11px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text3); word-break: break-all; }
+  /* IMPORT AREA */
+  .import-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;color:var(--text3);cursor:pointer;transition:border-color .2s;}
+  .import-zone:hover{border-color:var(--accent);color:var(--text2);}
+  .import-zone-icon{font-size:36px;margin-bottom:10px;}
+  .import-result{margin-top:14px;padding:12px;border-radius:8px;font-size:13px;}
+  .import-result.ok{background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);color:var(--success);}
+  .import-result.err{background:rgba(247,95,95,.1);border:1px solid rgba(247,95,95,.3);color:var(--danger);}
+
+  /* LEGAJOS TABLE */
+  .leg-table{width:100%;border-collapse:collapse;}
+  .leg-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:8px 0;border-bottom:1px solid var(--border);}
+  .leg-table td{padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);}
+  .leg-table tr:last-child td{border-bottom:none;}
 
   /* BUTTONS */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: opacity .2s; }
-  .btn:hover { opacity: .8; }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-warning { background: rgba(247,162,79,.15); color: var(--warning); border: 1px solid rgba(247,162,79,.3); }
-  .btn-danger { background: rgba(247,95,95,.15); color: var(--danger); border: 1px solid rgba(247,95,95,.3); }
-  .btn-success { background: rgba(62,207,142,.15); color: var(--success); border: 1px solid rgba(62,207,142,.3); }
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s;}
+  .btn:hover{opacity:.8;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+  .btn-warning{background:rgba(247,162,79,.15);color:var(--warning);border:1px solid rgba(247,162,79,.3);}
+  .btn-danger{background:rgba(247,95,95,.15);color:var(--danger);border:1px solid rgba(247,95,95,.3);}
+  .btn-success{background:rgba(62,207,142,.15);color:var(--success);border:1px solid rgba(62,207,142,.3);}
 
   /* MODAL */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .2s; }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; width: 440px; max-width: 92vw; transform: translateY(12px); transition: transform .2s; }
-  .modal-overlay.open .modal { transform: translateY(0); }
-  .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
-  .form-group { margin-bottom: 12px; }
-  .form-label { font-size: 11px; color: var(--text2); font-weight: 700; margin-bottom: 5px; display: block; letter-spacing: .5px; text-transform: uppercase; }
-  .form-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 11px; color: var(--text); font-size: 13px; outline: none; transition: border-color .2s; font-family: inherit; }
-  .form-input:focus { border-color: var(--accent); }
-  .form-input::placeholder { color: var(--text3); }
-  textarea.form-input { resize: vertical; min-height: 80px; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .2s;}
+  .modal-overlay.open{opacity:1;pointer-events:all;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:440px;max-width:92vw;transform:translateY(12px);transition:transform .2s;}
+  .modal-overlay.open .modal{transform:translateY(0);}
+  .modal-title{font-size:15px;font-weight:700;margin-bottom:16px;}
+  .form-group{margin-bottom:12px;}
+  .form-label{font-size:11px;color:var(--text2);font-weight:700;margin-bottom:5px;display:block;letter-spacing:.5px;text-transform:uppercase;}
+  .form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s;font-family:inherit;}
+  .form-input:focus{border-color:var(--accent);}
+  .form-input::placeholder{color:var(--text3);}
+  textarea.form-input{resize:vertical;min-height:80px;}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
   /* TOAST */
-  .toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 7px; z-index: 2000; }
-  .toast { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 11px 15px; font-size: 13px; display: flex; align-items: center; gap: 9px; box-shadow: 0 6px 20px rgba(0,0,0,.4); animation: slideIn .2s ease; max-width: 280px; }
-  .toast.success { border-left: 3px solid var(--success); }
-  .toast.warning { border-left: 3px solid var(--warning); }
-  .toast.error { border-left: 3px solid var(--danger); }
-  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-  /* PRINT LABEL */
-  @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  .toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:2000;}
+  .toast{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 15px;font-size:13px;display:flex;align-items:center;gap:9px;box-shadow:0 6px 20px rgba(0,0,0,.4);animation:slideIn .2s ease;max-width:280px;}
+  .toast.success{border-left:3px solid var(--success);}
+  .toast.warning{border-left:3px solid var(--warning);}
+  .toast.error{border-left:3px solid var(--danger);}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
 </style>
 </head>
 <body>
@@ -148,12 +172,19 @@
   <div class="logo">🔐 <span>Gestión</span> de Claves</div>
   <div class="header-right">
     <span class="stat-chip">Registros: <strong id="stat-total">0</strong></span>
-    <span class="stat-chip">Con novedad: <strong id="stat-novedad">0</strong></span>
+    <span class="stat-chip">Programados hoy: <strong id="stat-prog">0</strong></span>
     <span class="sync-status sync-loading" id="sync-status">Conectando…</span>
   </div>
 </header>
 
-<div class="app">
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('claves')">🔑 Claves</div>
+  <div class="tab" onclick="switchTab('programacion')">📅 Programación</div>
+  <div class="tab" onclick="switchTab('legajos')">👤 Legajos</div>
+</div>
+
+<!-- TAB: CLAVES -->
+<div id="tab-claves" class="app">
   <aside class="sidebar">
     <div class="sidebar-top">
       <input class="search-box" type="text" id="search" placeholder="Buscar ID, cliente, alarma…" oninput="renderList()">
@@ -161,12 +192,11 @@
     <div class="record-list" id="record-list"></div>
     <div class="sidebar-footer">
       <button class="btn-new" onclick="openNewModal()">+ Nuevo</button>
-      <button class="btn-sync" onclick="loadFromSheets()" title="Sincronizar">⟳</button>
+      <button class="btn-sync" onclick="loadAll()" title="Sincronizar">⟳</button>
       <button class="btn-sync" onclick="document.getElementById('excel-input').click()" title="Importar Excel">📥</button>
       <input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this)">
     </div>
   </aside>
-
   <main id="main-content">
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">🔐</div>
@@ -177,6 +207,62 @@
   </main>
 </div>
 
+<!-- TAB: PROGRAMACION -->
+<div id="tab-programacion" style="display:none" class="panel-full">
+  <div class="card">
+    <div class="card-title">Importar programación del día</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:8px;">1. Archivo <strong>Diario_Tomser</strong></div>
+        <div class="import-zone" onclick="document.getElementById('diario-input').click()">
+          <div class="import-zone-icon">📋</div>
+          <div>Click para seleccionar</div>
+          <div style="font-size:12px;margin-top:4px">Diario_Tomser.xlsx</div>
+          <input type="file" id="diario-input" accept=".xlsx" style="display:none" onchange="handleDiario(this)">
+        </div>
+        <div id="diario-result"></div>
+      </div>
+      <div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:8px;">2. Archivo <strong>Reporte_Hoy</strong></div>
+        <div class="import-zone" onclick="document.getElementById('reporte-input').click()">
+          <div class="import-zone-icon">📊</div>
+          <div>Click para seleccionar</div>
+          <div style="font-size:12px;margin-top:4px">Reporte_Hoy.xlsx</div>
+          <input type="file" id="reporte-input" accept=".xlsx" style="display:none" onchange="handleReporte(this)">
+        </div>
+        <div id="reporte-result"></div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="procesarProgramacion()" id="btn-procesar" disabled>⚡ Procesar y cargar programación</button>
+      <span id="prog-status" style="font-size:12px;color:var(--text3);margin-left:12px;"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Programación cargada hoy</div>
+    <div id="prog-table-container"><div style="color:var(--text3);font-size:13px">Cargando…</div></div>
+  </div>
+</div>
+
+<!-- TAB: LEGAJOS -->
+<div id="tab-legajos" style="display:none" class="panel-full">
+  <div class="card">
+    <div class="card-title">Importar legajos</div>
+    <div class="import-zone" onclick="document.getElementById('legajos-input').click()" style="max-width:400px">
+      <div class="import-zone-icon">👤</div>
+      <div>Click para seleccionar</div>
+      <div style="font-size:12px;margin-top:4px">Jefes_de_Equipo.xlsx</div>
+      <input type="file" id="legajos-input" accept=".xlsx" style="display:none" onchange="importLegajos(this)">
+    </div>
+    <div id="legajos-result"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Jefes de equipo registrados</div>
+    <div id="legajos-table-container"><div style="color:var(--text3);font-size:13px">Cargando…</div></div>
+  </div>
+</div>
+
 <div class="toast-container" id="toasts"></div>
 
 <!-- MODAL NUEVO -->
@@ -184,33 +270,15 @@
   <div class="modal">
     <div class="modal-title">Nuevo registro</div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">ID</label>
-        <input class="form-input" id="new-id" placeholder="Ej: MOSTLIN1">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Alarma</label>
-        <input class="form-input" id="new-alarma" placeholder="Código o vacío">
-      </div>
+      <div class="form-group"><label class="form-label">ID</label><input class="form-input" id="new-id" placeholder="Ej: MOSTLIN1"></div>
+      <div class="form-group"><label class="form-label">Alarma</label><input class="form-input" id="new-alarma" placeholder="Código o vacío"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Cliente</label>
-      <input class="form-input" id="new-cliente" placeholder="Nombre del cliente">
-    </div>
+    <div class="form-group"><label class="form-label">Cliente</label><input class="form-input" id="new-cliente" placeholder="Nombre del cliente"></div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Llavero</label>
-        <input class="form-input" id="new-llavero" placeholder="">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Transporte</label>
-        <input class="form-input" id="new-transporte" placeholder="Ej: BRINKS">
-      </div>
+      <div class="form-group"><label class="form-label">Llavero</label><input class="form-input" id="new-llavero"></div>
+      <div class="form-group"><label class="form-label">Transporte</label><input class="form-input" id="new-transporte" placeholder="Ej: BRINKS"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Novedad (opcional)</label>
-      <textarea class="form-input" id="new-novedad" placeholder="Ej: Dejar caja abierta por mudanza"></textarea>
-    </div>
+    <div class="form-group"><label class="form-label">Novedad (opcional)</label><textarea class="form-input" id="new-novedad"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-new')">Cancelar</button>
       <button class="btn btn-primary" onclick="createRecord()">Guardar</button>
@@ -218,572 +286,608 @@
   </div>
 </div>
 
-<!-- MODAL EDITAR NOVEDAD -->
+<!-- MODAL NOVEDAD -->
 <div class="modal-overlay" id="modal-novedad">
   <div class="modal">
     <div class="modal-title">Cargar novedad</div>
     <div id="modal-novedad-info" style="font-size:13px;color:var(--text2);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:7px;border:1px solid var(--border)"></div>
-    <div class="form-group">
-      <label class="form-label">Novedad</label>
-      <textarea class="form-input" id="edit-novedad" placeholder="Describí la novedad. Dejá vacío para borrarla." style="min-height:100px"></textarea>
-    </div>
+    <div class="form-group"><label class="form-label">Novedad</label><textarea class="form-input" id="edit-novedad" style="min-height:100px" placeholder="Dejá vacío para borrarla."></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-novedad')">Cancelar</button>
-      <button class="btn btn-warning" onclick="saveNovedad()">Guardar novedad</button>
+      <button class="btn btn-warning" onclick="saveNovedad()">Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL EDITAR REGISTRO -->
+<!-- MODAL EDIT -->
 <div class="modal-overlay" id="modal-edit">
   <div class="modal">
     <div class="modal-title">Editar registro</div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">ID</label>
-        <input class="form-input" id="edit-id" disabled style="opacity:.5">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Alarma</label>
-        <input class="form-input" id="edit-alarma" placeholder="Código o vacío = SIN ALARMA">
-      </div>
+      <div class="form-group"><label class="form-label">ID</label><input class="form-input" id="edit-id" disabled style="opacity:.5"></div>
+      <div class="form-group"><label class="form-label">Alarma</label><input class="form-input" id="edit-alarma"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Cliente</label>
-      <input class="form-input" id="edit-cliente">
-    </div>
+    <div class="form-group"><label class="form-label">Cliente</label><input class="form-input" id="edit-cliente"></div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Llavero</label>
-        <input class="form-input" id="edit-llavero">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Transporte</label>
-        <input class="form-input" id="edit-transporte">
-      </div>
+      <div class="form-group"><label class="form-label">Llavero</label><input class="form-input" id="edit-llavero"></div>
+      <div class="form-group"><label class="form-label">Transporte</label><input class="form-input" id="edit-transporte"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-edit')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveEdit()">Guardar cambios</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Guardar</button>
     </div>
   </div>
 </div>
 
 <script>
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyiKB7k3EGA-_VQI5h4J2n9VduMsQk873EXEVsKYis0mDp_xPh62xofaMyGOCrcSf2K/exec';
-const GITHUB_PAGES_URL = window.location.origin + window.location.pathname;
+const GITHUB_URL = window.location.origin + window.location.pathname;
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
-let db = [];
-let selectedId = null;
-let novedadTarget = null;
+let db = [], legajos = [], programacion = [];
+let selectedId = null, novedadTarget = null;
+let diarioData = null, reporteData = null;
+let activeTab = 'claves';
 
 function now() {
-  return new Date().toLocaleString('es-AR', {
-    day:'2-digit', month:'2-digit', year:'numeric',
-    hour:'2-digit', minute:'2-digit'
-  });
+  return new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
 
-// ─── SHEETS API ──────────────────────────────────────────────────────────────
+// ─── JSONP ────────────────────────────────────────────────────────────────────
 function jsonp(url) {
   return new Promise((resolve, reject) => {
     const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-    window[cb] = (data) => { delete window[cb]; document.getElementById(cb)?.remove(); resolve(data); };
+    window[cb] = (d) => { delete window[cb]; document.getElementById(cb)?.remove(); resolve(d); };
     const s = document.createElement('script');
-    s.id = cb;
-    s.onerror = () => { delete window[cb]; reject(new Error('JSONP error')); };
+    s.id = cb; s.onerror = () => reject(new Error('JSONP error'));
     s.src = url + '&callback=' + cb;
     document.head.appendChild(s);
   });
 }
 
-async function sheetsGet() {
-  const json = await jsonp(SHEET_URL + '?action=getAll');
-  return json.data || [];
-}
-
-async function sheetsSave() {
-  const payload = encodeURIComponent(JSON.stringify({ action: 'save', rows: db }));
-  await jsonp(SHEET_URL + '?action=save&payload=' + payload);
-}
-
-async function sheetsUpdateNovedad(id, novedad) {
-  const payload = encodeURIComponent(JSON.stringify({ action: 'updateNovedad', id, novedad }));
-  await jsonp(SHEET_URL + '?action=updateNovedad&payload=' + payload);
-}
-
-// ─── SYNC ────────────────────────────────────────────────────────────────────
+// ─── SYNC STATUS ──────────────────────────────────────────────────────────────
 function setSyncStatus(state) {
   const el = document.getElementById('sync-status');
-  if (state === 'ok') { el.className = 'sync-status sync-ok'; el.textContent = '● Sincronizado'; }
-  else if (state === 'err') { el.className = 'sync-status sync-err'; el.textContent = '✕ Sin conexión'; }
-  else { el.className = 'sync-status sync-loading'; el.textContent = '↻ Sincronizando…'; }
+  if (state==='ok'){el.className='sync-status sync-ok';el.textContent='● Sincronizado';}
+  else if(state==='err'){el.className='sync-status sync-err';el.textContent='✕ Sin conexión';}
+  else{el.className='sync-status sync-loading';el.textContent='↻ Sincronizando…';}
 }
 
-async function loadFromSheets() {
+// ─── LOAD ALL ────────────────────────────────────────────────────────────────
+async function loadAll() {
   setSyncStatus('loading');
   try {
-    const data = await sheetsGet();
-    db = data.map(r => ({
-      id: String(r.id || '').trim(),
-      cliente: String(r.cliente || '').trim(),
-      llavero: String(r.llavero || '').trim(),
-      alarma: String(r.alarma || '').trim(),
-      transporte: String(r.transporte || '').trim(),
-      novedad: String(r.novedad || '').trim(),
-      updatedAt: String(r.updatedAt || '').trim()
+    const [r1, r2, r3] = await Promise.all([
+      jsonp(SHEET_URL + '?action=getAll'),
+      jsonp(SHEET_URL + '?action=getLegajos'),
+      jsonp(SHEET_URL + '?action=getProgramacion')
+    ]);
+    db = (r1.data||[]).map(r=>({
+      id:String(r.id||'').trim(), cliente:String(r.cliente||'').trim(),
+      llavero:String(r.llavero||'').trim(), alarma:String(r.alarma||'').trim(),
+      transporte:String(r.transporte||'').trim(), novedad:String(r.novedad||'').trim(),
+      updatedAt:String(r.updatedAt||'').trim()
     }));
+    legajos = r2.data||[];
+    programacion = r3.data||[];
     setSyncStatus('ok');
-    updateStats();
-    renderList();
-    if (selectedId) renderDetail();
-    toast('Datos actualizados', 'success');
+    updateStats(); renderList(); renderProgTable(); renderLegajosTable();
+    if(selectedId) renderDetail();
+    toast('Datos actualizados','success');
   } catch(e) {
     setSyncStatus('err');
-    toast('Error de conexión con Sheets', 'error');
+    toast('Error de conexión','error');
   }
 }
 
-// ─── STATS ───────────────────────────────────────────────────────────────────
 function updateStats() {
   document.getElementById('stat-total').textContent = db.length;
-  document.getElementById('stat-novedad').textContent = db.filter(r => r.novedad).length;
+  document.getElementById('stat-prog').textContent = programacion.length;
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-claves').style.display = tab==='claves' ? 'grid' : 'none';
+  document.getElementById('tab-programacion').style.display = tab==='programacion' ? 'block' : 'none';
+  document.getElementById('tab-legajos').style.display = tab==='legajos' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('active', ['claves','programacion','legajos'][i]===tab);
+  });
 }
 
 // ─── LIST ────────────────────────────────────────────────────────────────────
 function renderList() {
   const q = document.getElementById('search').value.toLowerCase();
   const filtered = db.filter(r =>
-    r.id.toLowerCase().includes(q) ||
-    r.cliente.toLowerCase().includes(q) ||
-    r.alarma.toLowerCase().includes(q) ||
-    r.transporte.toLowerCase().includes(q)
+    r.id.toLowerCase().includes(q)||r.cliente.toLowerCase().includes(q)||r.alarma.toLowerCase().includes(q)
   );
   const el = document.getElementById('record-list');
-  if (!filtered.length) {
-    el.innerHTML = '<div class="no-results">Sin resultados</div>';
-    return;
-  }
-  el.innerHTML = filtered.map(r => `
-    <div class="record-item ${r.id === selectedId ? 'active' : ''}" onclick="selectRecord('${r.id}')">
+  if(!filtered.length){el.innerHTML='<div class="no-results">Sin resultados</div>';return;}
+  const progIds = new Set(programacion.map(p=>String(p.parid).trim()));
+  el.innerHTML = filtered.map(r=>`
+    <div class="record-item ${r.id===selectedId?'active':''}" onclick="selectRecord('${r.id}')">
       <div class="record-item-id">${r.id}</div>
-      <div class="record-item-cliente">${r.cliente || '—'}</div>
-      <div class="record-item-alarma">${r.alarma ? '🔑 ' + r.alarma : '⚠ SIN ALARMA'}</div>
-      ${r.novedad ? `<div class="record-item-novedad">📋 ${r.novedad}</div>` : ''}
+      <div class="record-item-cliente">${r.cliente||'—'}</div>
+      <div class="record-item-alarma">${r.alarma?'🔑 '+r.alarma:'⚠ SIN ALARMA'}</div>
+      ${r.novedad?`<div class="record-item-novedad">📋 ${r.novedad}</div>`:''}
+      ${progIds.has(r.id)?`<div class="record-item-prog">✓ Programado hoy</div>`:''}
     </div>
   `).join('');
 }
 
 // ─── DETAIL ──────────────────────────────────────────────────────────────────
-function selectRecord(id) {
-  selectedId = id;
-  renderList();
-  renderDetail();
-}
+function selectRecord(id) { selectedId=id; renderList(); renderDetail(); }
 
 function renderDetail() {
-  const r = db.find(x => x.id === selectedId);
-  if (!r) {
-    document.getElementById('empty-state').style.display = 'flex';
-    document.getElementById('detail-view').style.display = 'none';
-    return;
-  }
-  document.getElementById('empty-state').style.display = 'none';
+  const r = db.find(x=>x.id===selectedId);
+  if(!r){document.getElementById('empty-state').style.display='flex';document.getElementById('detail-view').style.display='none';return;}
+  document.getElementById('empty-state').style.display='none';
   const dv = document.getElementById('detail-view');
-  dv.style.display = 'flex';
+  dv.style.display='flex';
 
-  const qrUrl = `${GITHUB_PAGES_URL}?scan=${encodeURIComponent(r.id)}`;
-  const alarmaDisplay = r.alarma
+  const qrUrl = `${GITHUB_URL}?scan=${encodeURIComponent(r.id)}`;
+  const progEntry = programacion.find(p=>String(p.parid).trim()===r.id);
+  const alarmaHtml = r.alarma
     ? `<div class="detail-alarma">${r.alarma}</div>`
     : `<div class="detail-sin-alarma">SIN ALARMA</div>`;
-
   const novedadHtml = r.novedad
     ? `<div class="novedad-box has-novedad">${r.novedad}</div>`
     : `<div class="novedad-box"><span class="novedad-empty">Sin novedades</span></div>`;
 
   dv.innerHTML = `
-    <!-- INFO CARD -->
     <div class="card">
-      <div class="detail-header">
-        <div>
-          <div class="detail-id">${r.id}</div>
-          ${alarmaDisplay}
-          <div class="detail-cliente">${r.cliente || '—'}</div>
-          <div class="detail-meta">
-            <div class="detail-meta-item">🔑 Llavero: <strong>${r.llavero || '—'}</strong></div>
-            <div class="detail-meta-item">🚛 Transporte: <strong>${r.transporte || '—'}</strong></div>
-            ${r.updatedAt ? `<div class="detail-meta-item">🕐 <strong>${r.updatedAt}</strong></div>` : ''}
-          </div>
+      <div class="detail-id">${r.id}</div>
+      ${alarmaHtml}
+      <div class="detail-cliente">${r.cliente||'—'}</div>
+      <div class="detail-meta">
+        <div class="detail-meta-item">🔑 Llavero: <strong>${r.llavero||'—'}</strong></div>
+        <div class="detail-meta-item">🚛 Transporte: <strong>${r.transporte||'—'}</strong></div>
+        ${r.updatedAt?`<div class="detail-meta-item">🕐 <strong>${r.updatedAt}</strong></div>`:''}
+      </div>
+      ${progEntry?`
+        <div style="margin-top:12px;padding:10px;background:rgba(62,207,142,.08);border:1px solid rgba(62,207,142,.2);border-radius:8px;font-size:13px;">
+          <span style="color:var(--success);font-weight:700">✓ Programado hoy</span> — 
+          Ruta <strong>${progEntry.rutid}</strong> — 
+          Jefe: <strong>${progEntry.jefe||'—'}</strong>
         </div>
-      </div>
+      `:`<div style="margin-top:12px;padding:8px;background:rgba(247,95,95,.08);border:1px solid rgba(247,95,95,.2);border-radius:8px;font-size:12px;color:var(--danger)">✕ No programado hoy — QR no habilitado</div>`}
       <div class="action-row">
-        <button class="btn btn-warning" onclick="openNovedadModal('${r.id}')">📋 Cargar novedad</button>
+        <button class="btn btn-warning" onclick="openNovedadModal('${r.id}')">📋 Novedad</button>
         <button class="btn btn-secondary" onclick="openEditModal('${r.id}')">✏ Editar</button>
-        <button class="btn btn-success" onclick="printLabel('${r.id}')">🖨 Imprimir etiqueta</button>
-        <button class="btn btn-danger" style="margin-left:auto" onclick="deleteRecord('${r.id}')">🗑 Eliminar</button>
+        <button class="btn btn-success" onclick="printLabel('${r.id}')">🖨 Etiqueta</button>
+        <button class="btn btn-danger" style="margin-left:auto" onclick="deleteRecord('${r.id}')">🗑</button>
       </div>
     </div>
-
-    <!-- NOVEDAD CARD -->
-    <div class="card">
-      <div class="card-title">Novedad actual</div>
-      ${novedadHtml}
-    </div>
-
-    <!-- QR CARD -->
+    <div class="card"><div class="card-title">Novedad actual</div>${novedadHtml}</div>
     <div class="card">
       <div class="card-title">Código QR</div>
       <div class="qr-section">
         <div class="qr-wrapper" id="qr-container-${r.id}"></div>
         <div class="qr-info">
-          <div style="font-size:13px;color:var(--text2)">Al escanear → pantalla con código de alarma grande + novedad.</div>
+          <div style="font-size:13px;color:var(--text2)">Al escanear → pide legajo → valida → muestra alarma.</div>
           <div class="qr-url-box">${qrUrl}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="downloadQR('${r.id}')">⬇ Descargar PNG</button>
-          </div>
+          <button class="btn btn-secondary" onclick="downloadQR('${r.id}')">⬇ Descargar QR</button>
         </div>
       </div>
     </div>
   `;
-
-  setTimeout(() => {
-    const el = document.getElementById(`qr-container-${r.id}`);
-    if (el) {
-      el.innerHTML = '';
-      new QRCode(el, { text: qrUrl, width: 130, height: 130, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-    }
-  }, 50);
+  setTimeout(()=>{
+    const el=document.getElementById(`qr-container-${r.id}`);
+    if(el){el.innerHTML='';new QRCode(el,{text:qrUrl,width:130,height:130,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});}
+  },50);
 }
 
-// ─── NOVEDAD ─────────────────────────────────────────────────────────────────
-function openNovedadModal(id) {
-  const r = db.find(x => x.id === id);
-  novedadTarget = id;
-  document.getElementById('modal-novedad-info').innerHTML = `
-    <strong style="color:var(--accent);font-family:var(--mono)">${r.id}</strong> — ${r.cliente || '—'}<br>
-    <span style="color:var(--text3)">Alarma: ${r.alarma || 'SIN ALARMA'}</span>
-  `;
-  document.getElementById('edit-novedad').value = r.novedad || '';
-  openModal('modal-novedad');
-  setTimeout(() => document.getElementById('edit-novedad').focus(), 100);
+// ─── PROG TABLE ───────────────────────────────────────────────────────────────
+function renderProgTable() {
+  const el = document.getElementById('prog-table-container');
+  if(!programacion.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin programación cargada. Importá los archivos arriba.</div>';return;}
+  el.innerHTML=`<table class="prog-table">
+    <thead><tr><th>ParID</th><th>RutaID</th><th>Jefe de Equipo</th><th>Legajo</th></tr></thead>
+    <tbody>${programacion.map(p=>`
+      <tr>
+        <td><span class="prog-id">${p.parid}</span></td>
+        <td>${p.rutid}</td>
+        <td>${p.jefe||'—'}</td>
+        <td style="font-family:var(--mono);font-size:12px">${p.legajo_jefe||'—'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
-async function saveNovedad() {
-  const r = db.find(x => x.id === novedadTarget);
-  const novedad = document.getElementById('edit-novedad').value.trim();
-  r.novedad = novedad;
-  r.updatedAt = now();
-  setSyncStatus('loading');
-  try {
-    await sheetsUpdateNovedad(r.id, novedad);
-    setSyncStatus('ok');
-    toast(novedad ? 'Novedad guardada' : 'Novedad borrada', 'success');
-  } catch(e) {
-    setSyncStatus('err');
-    toast('Error al guardar en Sheets', 'error');
-  }
-  closeModal('modal-novedad');
-  updateStats();
-  renderList();
-  renderDetail();
+// ─── LEGAJOS TABLE ────────────────────────────────────────────────────────────
+function renderLegajosTable() {
+  const el = document.getElementById('legajos-table-container');
+  if(!legajos.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin legajos. Importá el archivo de Jefes de Equipo.</div>';return;}
+  el.innerHTML=`<table class="leg-table">
+    <thead><tr><th>Nombre</th><th>Legajo</th></tr></thead>
+    <tbody>${legajos.map(l=>`
+      <tr><td>${l.nombre||l['Nombre Jefe de equipo']||''}</td>
+      <td style="font-family:var(--mono);font-size:12px">${l.legajo||l['Legajo']||''}</td></tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
-// ─── EDIT ────────────────────────────────────────────────────────────────────
-function openEditModal(id) {
-  const r = db.find(x => x.id === id);
-  document.getElementById('edit-id').value = r.id;
-  document.getElementById('edit-alarma').value = r.alarma;
-  document.getElementById('edit-cliente').value = r.cliente;
-  document.getElementById('edit-llavero').value = r.llavero;
-  document.getElementById('edit-transporte').value = r.transporte;
-  openModal('modal-edit');
-}
-
-async function saveEdit() {
-  const id = document.getElementById('edit-id').value;
-  const r = db.find(x => x.id === id);
-  r.alarma = document.getElementById('edit-alarma').value.trim();
-  r.cliente = document.getElementById('edit-cliente').value.trim();
-  r.llavero = document.getElementById('edit-llavero').value.trim();
-  r.transporte = document.getElementById('edit-transporte').value.trim();
-  r.updatedAt = now();
-  setSyncStatus('loading');
-  try {
-    await sheetsSave();
-    setSyncStatus('ok');
-    toast('Registro actualizado', 'success');
-  } catch(e) {
-    setSyncStatus('err');
-    toast('Error al guardar en Sheets', 'error');
-  }
-  closeModal('modal-edit');
-  renderList();
-  renderDetail();
-}
-
-// ─── CREATE ───────────────────────────────────────────────────────────────────
-function openNewModal() {
-  ['new-id','new-alarma','new-cliente','new-llavero','new-transporte','new-novedad'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  openModal('modal-new');
-  setTimeout(() => document.getElementById('new-id').focus(), 100);
-}
-
-async function createRecord() {
-  const id = document.getElementById('new-id').value.trim().toUpperCase();
-  if (!id) { toast('ID requerido', 'warning'); return; }
-  if (db.find(r => r.id === id)) { toast('ID ya existe', 'warning'); return; }
-  const r = {
-    id,
-    cliente: document.getElementById('new-cliente').value.trim(),
-    llavero: document.getElementById('new-llavero').value.trim(),
-    alarma: document.getElementById('new-alarma').value.trim(),
-    transporte: document.getElementById('new-transporte').value.trim(),
-    novedad: document.getElementById('new-novedad').value.trim(),
-    updatedAt: now()
-  };
-  db.unshift(r);
-  setSyncStatus('loading');
-  try {
-    await sheetsSave();
-    setSyncStatus('ok');
-    toast(`Registro ${id} creado`, 'success');
-  } catch(e) {
-    setSyncStatus('err');
-    toast('Error al guardar en Sheets', 'error');
-  }
-  closeModal('modal-new');
-  updateStats();
-  renderList();
-  selectRecord(id);
-}
-
-// ─── DELETE ───────────────────────────────────────────────────────────────────
-async function deleteRecord(id) {
-  if (!confirm(`¿Eliminar ${id}? No se puede deshacer.`)) return;
-  db = db.filter(r => r.id !== id);
-  selectedId = null;
-  setSyncStatus('loading');
-  try {
-    await sheetsSave();
-    setSyncStatus('ok');
-    toast('Registro eliminado', 'warning');
-  } catch(e) {
-    setSyncStatus('err');
-    toast('Error al guardar en Sheets', 'error');
-  }
-  updateStats();
-  renderList();
-  renderDetail();
-}
-
-// ─── QR ──────────────────────────────────────────────────────────────────────
-function downloadQR(id) {
-  const container = document.getElementById(`qr-container-${id}`);
-  const canvas = container?.querySelector('canvas');
-  if (!canvas) { toast('QR no disponible', 'warning'); return; }
-  const link = document.createElement('a');
-  link.download = `QR_${id}.png`;
-  link.href = canvas.toDataURL();
-  link.click();
-  toast('QR descargado', 'success');
-}
-
-// ─── PRINT LABEL ─────────────────────────────────────────────────────────────
-function printLabel(id) {
-  const r = db.find(x => x.id === id);
-  const container = document.getElementById(`qr-container-${id}`);
-  const canvas = container?.querySelector('canvas');
-  if (!canvas) { toast('QR no disponible', 'warning'); return; }
-  const qrDataUrl = canvas.toDataURL();
-
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Etiqueta ${r.id}</title>
-<style>
-  @page { margin: 0; size: 10cm 6cm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { width: 10cm; height: 6cm; display: flex; align-items: center; justify-content: space-between; padding: 0.35cm; font-family: 'Courier New', monospace; background: white; color: black; gap: 0.3cm; }
-  .qr { width: 4.6cm; height: 4.6cm; flex-shrink: 0; image-rendering: pixelated; }
-  .info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.12cm; overflow: hidden; }
-  .top { font-size: 6pt; letter-spacing: 1px; text-transform: uppercase; color: #888; border-bottom: 0.5pt solid #ddd; padding-bottom: 0.08cm; margin-bottom: 0.05cm; }
-  .id { font-size: 8pt; color: #555; letter-spacing: 1px; }
-  .alarma { font-size: ${r.alarma ? '26pt' : '14pt'}; font-weight: 900; letter-spacing: 2px; line-height: 1; color: ${r.alarma ? '#000' : '#cc0000'}; word-break: break-all; }
-  .cliente { font-size: 8pt; font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.2; word-break: break-word; margin-top: 0.05cm; }
-  .llavero { font-size: 7pt; color: #555; }
-  .novedad { background: #fffbe6; border: 0.5pt solid #cc9900; border-radius: 2pt; padding: 2pt 4pt; font-size: 7pt; font-family: 'Segoe UI', sans-serif; color: #663300; line-height: 1.3; margin-top: 0.08cm; word-break: break-word; }
-  .footer { font-size: 5.5pt; color: #bbb; font-family: 'Segoe UI', sans-serif; margin-top: auto; padding-top: 0.08cm; border-top: 0.5pt solid #eee; }
-</style></head>
-<body>
-  <img class="qr" src="${qrDataUrl}">
-  <div class="info">
-    <div class="top">🔐 Gestión de Claves</div>
-    <div class="id">${r.id}</div>
-    <div class="alarma">${r.alarma || 'SIN ALARMA'}</div>
-    <div class="cliente">${r.cliente || ''}</div>
-    <div class="llavero">${r.llavero ? '🔑 ' + r.llavero : ''} ${r.transporte ? '· ' + r.transporte : ''}</div>
-    ${r.novedad ? `<div class="novedad">⚠ ${r.novedad}</div>` : ''}
-    <div class="footer">${r.updatedAt || ''}</div>
-  </div>
-</body></html>`);
-  win.document.close();
-  win.onload = () => { win.focus(); win.print(); };
-}
-
-// ─── SCAN MODE ───────────────────────────────────────────────────────────────
-async function checkScanMode() {
-  const params = new URLSearchParams(window.location.search);
-  const scanId = params.get('scan');
-  if (!scanId) return;
-
-  document.body.className = 'scan-mode';
-  document.body.innerHTML = `
-    <div class="scan-label">🔐 Gestión de Claves</div>
-    <div id="scan-content" style="display:flex;flex-direction:column;align-items:center">
-      <div style="color:#444;font-size:14px">Cargando…</div>
-    </div>
-    <div class="scan-dot"></div>
-  `;
-
-  try {
-    const json = await jsonp(SHEET_URL + '?action=getAll');
-    const r = (json.data || []).find(x => String(x.id).trim() === decodeURIComponent(scanId).trim());
-
-    const alarmaHtml = r && String(r.alarma).trim()
-      ? `<div class="scan-alarma-label">CÓDIGO DE ALARMA</div><div class="scan-code">${r.alarma}</div>`
-      : `<div class="scan-alarma-label">ALARMA</div><div class="scan-sin-alarma">SIN ALARMA</div>`;
-
-    const novedadHtml = r && r.novedad
-      ? `<div class="scan-novedad"><div class="scan-novedad-label">⚠ Novedad</div><div class="scan-novedad-text">${r.novedad}</div></div>`
-      : '';
-
-    document.getElementById('scan-content').innerHTML = `
-      ${alarmaHtml}
-      <div class="scan-cliente">${r ? (r.cliente || '') : decodeURIComponent(scanId)}</div>
-      ${novedadHtml}
-      ${r && r.transporte ? `<div class="scan-transporte">🚛 ${r.transporte}</div>` : ''}
-    `;
-  } catch(e) {
-    document.getElementById('scan-content').innerHTML = `
-      <div class="scan-code" style="font-size:40px;color:#f75f5f">Error</div>
-      <div class="scan-cliente">No se pudo conectar</div>
-    `;
-  }
-}
-
-// ─── MODAL ───────────────────────────────────────────────────────────────────
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(el => closeModal(el.id));
-});
-
-// ─── TOAST ───────────────────────────────────────────────────────────────────
-function toast(msg, type = 'success') {
-  const icons = { success: '✓', warning: '⚠', error: '✕' };
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type]||'•'}</span><span>${msg}</span>`;
-  document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
-}
-
-// ─── IMPORT EXCEL ────────────────────────────────────────────────────────────
-function importExcel(input) {
-  const file = input.files[0];
-  if (!file) return;
+// ─── IMPORT DIARIO ────────────────────────────────────────────────────────────
+function handleDiario(input) {
+  const file = input.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
-      // Parse XLSX manually (binary)
-      const data = new Uint8Array(e.target.result);
-      // Use SheetJS via CDN
-      if (!window.XLSX) {
-        toast('Cargando librería…', 'success');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
-      }
-      const wb = XLSX.read(data, { type: 'array' });
+      if(!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      
-      if (rows.length < 2) { toast('Excel vacío', 'warning'); return; }
-      
-      const headers = rows[0].map(h => String(h).trim().toUpperCase());
-      const idIdx = headers.findIndex(h => h === 'ID');
-      const clIdx = headers.findIndex(h => h === 'CLIENTE');
-      const llIdx = headers.findIndex(h => h.includes('LLAVE'));
-      const alIdx = headers.findIndex(h => h === 'ALARMA');
-      const trIdx = headers.findIndex(h => h.includes('TRANSP'));
-
-      if (idIdx === -1) { toast('No encontré columna ID', 'warning'); return; }
-
-      const nuevos = [];
-      const actualizados = [];
-
-      rows.slice(1).forEach(r => {
-        if (!r[idIdx]) return;
-        const fmt = (v) => {
-          if (v === undefined || v === null || v === '') return '';
-          const s = String(v).trim();
-          const n = parseFloat(s);
-          return (!isNaN(n) && Number.isInteger(n)) ? String(Math.round(n)) : s;
-        };
-        const id = fmt(r[idIdx]);
-        const registro = {
-          id,
-          cliente: clIdx >= 0 ? fmt(r[clIdx]) : '',
-          llavero: llIdx >= 0 ? fmt(r[llIdx]) : '',
-          alarma:  alIdx >= 0 ? fmt(r[alIdx]) : '',
-          transporte: trIdx >= 0 ? fmt(r[trIdx]) : '',
-          novedad: '',
-          updatedAt: new Date().toLocaleString('es-AR')
-        };
-        const existing = db.find(x => x.id === id);
-        if (existing) {
-          Object.assign(existing, { ...registro, novedad: existing.novedad });
-          actualizados.push(id);
-        } else {
-          db.push(registro);
-          nuevos.push(id);
-        }
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1});
+      // Find header row
+      let hIdx = rows.findIndex(r => r.includes('ParId') || r.includes('RutId'));
+      if(hIdx<0){document.getElementById('diario-result').innerHTML='<div class="import-result err">No encontré columnas ParId/RutId</div>';return;}
+      const headers = rows[hIdx].map(h=>String(h||'').trim());
+      const paridCol = headers.indexOf('ParId');
+      const rutidCol = headers.indexOf('RutId');
+      const fechaCol = headers.indexOf('DiaFec');
+      // Build parid->rutid map (unique)
+      const map = {};
+      rows.slice(hIdx+1).forEach(r=>{
+        const parid = r[paridCol]?String(r[paridCol]).trim():'';
+        const rutid = r[rutidCol]?String(r[rutidCol]).trim():'';
+        const fecha = r[fechaCol]?String(r[fechaCol]).trim():'';
+        if(parid && rutid && !map[parid]) map[parid]={parid,rutid,fecha};
       });
-
-      setSyncStatus('loading');
-      const payload = encodeURIComponent(JSON.stringify({ action: 'save', rows: db }));
-      await jsonp(SHEET_URL + '?action=save&payload=' + payload);
-      setSyncStatus('ok');
-      updateStats();
-      renderList();
-      toast(`✓ ${nuevos.length} nuevos, ${actualizados.length} actualizados`, 'success');
-      input.value = '';
-    } catch(err) {
-      setSyncStatus('err');
-      toast('Error al importar: ' + err.message, 'error');
-      console.error(err);
+      diarioData = Object.values(map);
+      document.getElementById('diario-result').innerHTML=`<div class="import-result ok">✓ ${diarioData.length} registros únicos leídos</div>`;
+      checkProcesar();
+    } catch(err){
+      document.getElementById('diario-result').innerHTML=`<div class="import-result err">Error: ${err.message}</div>`;
     }
   };
   reader.readAsArrayBuffer(file);
 }
 
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
+// ─── IMPORT REPORTE ───────────────────────────────────────────────────────────
+function handleReporte(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      if(!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws = wb.Sheets['Radio'] || wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1});
+      const hIdx = rows.findIndex(r=>r.includes('Ruta')||r.includes('Jefe de Equipo'));
+      if(hIdx<0){document.getElementById('reporte-result').innerHTML='<div class="import-result err">No encontré columnas Ruta/Jefe</div>';return;}
+      const headers = rows[hIdx].map(h=>String(h||'').trim());
+      const rutaCol = headers.indexOf('Ruta');
+      const jefeCol = headers.findIndex(h=>h.includes('Jefe'));
+      // ruta->jefe map
+      const map = {};
+      rows.slice(hIdx+1).forEach(r=>{
+        const ruta = r[rutaCol]?String(r[rutaCol]).trim():'';
+        const jefe = r[jefeCol]?String(r[jefeCol]).trim():'';
+        if(ruta && jefe) map[ruta]=jefe;
+      });
+      reporteData = map;
+      document.getElementById('reporte-result').innerHTML=`<div class="import-result ok">✓ ${Object.keys(map).length} rutas con jefe asignado</div>`;
+      checkProcesar();
+    } catch(err){
+      document.getElementById('reporte-result').innerHTML=`<div class="import-result err">Error: ${err.message}</div>`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function checkProcesar() {
+  document.getElementById('btn-procesar').disabled = !(diarioData && reporteData);
+}
+
+// ─── PROCESAR PROGRAMACION ────────────────────────────────────────────────────
+async function procesarProgramacion() {
+  if(!diarioData||!reporteData) return;
+  // Cross-reference: for each parid, get rutid, then get jefe from reporte by rutid
+  const rows = diarioData.map(d=>{
+    const rutid = d.rutid;
+    // Reporte usa ruta sin leading zeros: '248' == '248'
+    const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
+    // Get legajo from legajos list
+    const legObj = legajos.find(l=>{
+      const nombre = (l.nombre||l['Nombre Jefe de equipo']||'').toUpperCase();
+      return jefe.toUpperCase().includes(nombre.split(' ')[0]) || nombre.includes(jefe.split(',')[0]?.trim().toUpperCase());
+    });
+    const legajo_jefe = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
+    return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe };
+  }).filter(r=>r.jefe); // solo los que tienen jefe asignado
+
+  document.getElementById('prog-status').textContent = `Procesando ${rows.length} registros…`;
+  try {
+    const payload = encodeURIComponent(JSON.stringify({action:'saveProgramacion',rows}));
+    const res = await jsonp(SHEET_URL+'?action=saveProgramacion&payload='+payload);
+    if(res.ok){
+      programacion = rows;
+      updateStats();
+      renderProgTable();
+      renderList();
+      document.getElementById('prog-status').textContent = `✓ ${rows.length} registros cargados`;
+      toast(`Programación: ${rows.length} registros`,'success');
+    }
+  } catch(e){
+    document.getElementById('prog-status').textContent = 'Error al guardar';
+    toast('Error al guardar programación','error');
+  }
+}
+
+// ─── IMPORT LEGAJOS ───────────────────────────────────────────────────────────
+async function importLegajos(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      if(!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1});
+      const hIdx = rows.findIndex(r=>r.some(c=>String(c||'').toLowerCase().includes('nombre')||String(c||'').toLowerCase().includes('legajo')));
+      if(hIdx<0){document.getElementById('legajos-result').innerHTML='<div class="import-result err">No encontré columnas</div>';return;}
+      const headers = rows[hIdx].map(h=>String(h||'').trim());
+      const nomCol = headers.findIndex(h=>h.toLowerCase().includes('nombre'));
+      const legCol = headers.findIndex(h=>h.toLowerCase().includes('legajo'));
+      const data = rows.slice(hIdx+1).filter(r=>r[nomCol]).map(r=>({
+        nombre:String(r[nomCol]).trim(),
+        legajo:String(r[legCol]||'').trim()
+      }));
+      const payload = encodeURIComponent(JSON.stringify({action:'saveLegajos',rows:data}));
+      const res = await jsonp(SHEET_URL+'?action=saveLegajos&payload='+payload);
+      if(res.ok){
+        legajos = data;
+        renderLegajosTable();
+        document.getElementById('legajos-result').innerHTML=`<div class="import-result ok">✓ ${data.length} legajos importados</div>`;
+        toast(`${data.length} legajos cargados`,'success');
+      }
+    } catch(err){
+      document.getElementById('legajos-result').innerHTML=`<div class="import-result err">Error: ${err.message}</div>`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── IMPORT EXCEL CLAVES ──────────────────────────────────────────────────────
+function importExcel(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      if(!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1});
+      const headers = rows[0].map(h=>String(h||'').trim().toUpperCase());
+      const idIdx=headers.findIndex(h=>h==='ID');
+      const clIdx=headers.findIndex(h=>h==='CLIENTE');
+      const llIdx=headers.findIndex(h=>h.includes('LLAVE'));
+      const alIdx=headers.findIndex(h=>h==='ALARMA');
+      const trIdx=headers.findIndex(h=>h.includes('TRANSP'));
+      if(idIdx<0){toast('No encontré columna ID','warning');return;}
+      let nuevos=0,actualizados=0;
+      rows.slice(1).forEach(r=>{
+        if(!r[idIdx]) return;
+        const fmt=v=>{if(v===undefined||v===null||v==='')return '';const s=String(v).trim();const n=parseFloat(s);return(!isNaN(n)&&Number.isInteger(n))?String(Math.round(n)):s;};
+        const id=fmt(r[idIdx]);
+        const reg={id,cliente:clIdx>=0?fmt(r[clIdx]):'',llavero:llIdx>=0?fmt(r[llIdx]):'',alarma:alIdx>=0?fmt(r[alIdx]):'',transporte:trIdx>=0?fmt(r[trIdx]):'',novedad:'',updatedAt:now()};
+        const existing=db.find(x=>x.id===id);
+        if(existing){Object.assign(existing,{...reg,novedad:existing.novedad});actualizados++;}
+        else{db.push(reg);nuevos++;}
+      });
+      setSyncStatus('loading');
+      const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
+      await jsonp(SHEET_URL+'?action=save&payload='+payload);
+      setSyncStatus('ok');
+      updateStats();renderList();
+      toast(`✓ ${nuevos} nuevos, ${actualizados} actualizados`,'success');
+      input.value='';
+    } catch(err){toast('Error al importar: '+err.message,'error');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── NOVEDAD ─────────────────────────────────────────────────────────────────
+function openNovedadModal(id) {
+  const r=db.find(x=>x.id===id); novedadTarget=id;
+  document.getElementById('modal-novedad-info').innerHTML=`<strong style="color:var(--accent);font-family:var(--mono)">${r.id}</strong> — ${r.cliente||'—'}<br><span style="color:var(--text3)">Alarma: ${r.alarma||'SIN ALARMA'}</span>`;
+  document.getElementById('edit-novedad').value=r.novedad||'';
+  openModal('modal-novedad');
+  setTimeout(()=>document.getElementById('edit-novedad').focus(),100);
+}
+async function saveNovedad() {
+  const r=db.find(x=>x.id===novedadTarget);
+  const novedad=document.getElementById('edit-novedad').value.trim();
+  r.novedad=novedad; r.updatedAt=now();
+  setSyncStatus('loading');
+  try{
+    const payload=encodeURIComponent(JSON.stringify({action:'updateNovedad',id:r.id,novedad}));
+    await jsonp(SHEET_URL+'?action=updateNovedad&payload='+payload);
+    setSyncStatus('ok'); toast(novedad?'Novedad guardada':'Novedad borrada','success');
+  }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
+  closeModal('modal-novedad'); updateStats(); renderList(); renderDetail();
+}
+
+// ─── EDIT ────────────────────────────────────────────────────────────────────
+function openEditModal(id) {
+  const r=db.find(x=>x.id===id);
+  document.getElementById('edit-id').value=r.id;
+  document.getElementById('edit-alarma').value=r.alarma;
+  document.getElementById('edit-cliente').value=r.cliente;
+  document.getElementById('edit-llavero').value=r.llavero;
+  document.getElementById('edit-transporte').value=r.transporte;
+  openModal('modal-edit');
+}
+async function saveEdit() {
+  const id=document.getElementById('edit-id').value;
+  const r=db.find(x=>x.id===id);
+  r.alarma=document.getElementById('edit-alarma').value.trim();
+  r.cliente=document.getElementById('edit-cliente').value.trim();
+  r.llavero=document.getElementById('edit-llavero').value.trim();
+  r.transporte=document.getElementById('edit-transporte').value.trim();
+  r.updatedAt=now();
+  setSyncStatus('loading');
+  try{
+    const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
+    await jsonp(SHEET_URL+'?action=save&payload='+payload);
+    setSyncStatus('ok'); toast('Registro actualizado','success');
+  }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
+  closeModal('modal-edit'); renderList(); renderDetail();
+}
+
+// ─── CREATE ───────────────────────────────────────────────────────────────────
+function openNewModal() {
+  ['new-id','new-alarma','new-cliente','new-llavero','new-transporte','new-novedad'].forEach(id=>document.getElementById(id).value='');
+  openModal('modal-new');
+  setTimeout(()=>document.getElementById('new-id').focus(),100);
+}
+async function createRecord() {
+  const id=document.getElementById('new-id').value.trim().toUpperCase();
+  if(!id){toast('ID requerido','warning');return;}
+  if(db.find(r=>r.id===id)){toast('ID ya existe','warning');return;}
+  const r={id,cliente:document.getElementById('new-cliente').value.trim(),llavero:document.getElementById('new-llavero').value.trim(),alarma:document.getElementById('new-alarma').value.trim(),transporte:document.getElementById('new-transporte').value.trim(),novedad:document.getElementById('new-novedad').value.trim(),updatedAt:now()};
+  db.unshift(r);
+  setSyncStatus('loading');
+  try{
+    const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
+    await jsonp(SHEET_URL+'?action=save&payload='+payload);
+    setSyncStatus('ok'); toast(`Registro ${id} creado`,'success');
+  }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
+  closeModal('modal-new'); updateStats(); renderList(); selectRecord(id);
+}
+
+// ─── DELETE ───────────────────────────────────────────────────────────────────
+async function deleteRecord(id) {
+  if(!confirm(`¿Eliminar ${id}?`)) return;
+  db=db.filter(r=>r.id!==id); selectedId=null;
+  setSyncStatus('loading');
+  try{
+    const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
+    await jsonp(SHEET_URL+'?action=save&payload='+payload);
+    setSyncStatus('ok'); toast('Eliminado','warning');
+  }catch(e){setSyncStatus('err');}
+  updateStats(); renderList(); renderDetail();
+}
+
+// ─── QR ──────────────────────────────────────────────────────────────────────
+function downloadQR(id) {
+  const canvas=document.getElementById(`qr-container-${id}`)?.querySelector('canvas');
+  if(!canvas){toast('QR no disponible','warning');return;}
+  const a=document.createElement('a'); a.download=`QR_${id}.png`; a.href=canvas.toDataURL(); a.click();
+  toast('QR descargado','success');
+}
+
+// ─── PRINT LABEL ─────────────────────────────────────────────────────────────
+function printLabel(id) {
+  const r=db.find(x=>x.id===id);
+  const canvas=document.getElementById(`qr-container-${id}`)?.querySelector('canvas');
+  if(!canvas){toast('QR no disponible','warning');return;}
+  const qrDataUrl=canvas.toDataURL();
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiqueta ${r.id}</title>
+<style>@page{margin:0;size:10cm 6cm;}*{margin:0;padding:0;box-sizing:border-box;}
+body{width:10cm;height:6cm;display:flex;align-items:center;justify-content:space-between;padding:.35cm;font-family:'Courier New',monospace;background:white;color:black;gap:.3cm;}
+.qr{width:4.6cm;height:4.6cm;flex-shrink:0;image-rendering:pixelated;}
+.info{flex:1;display:flex;flex-direction:column;justify-content:center;gap:.1cm;overflow:hidden;}
+.top{font-size:6pt;letter-spacing:1px;text-transform:uppercase;color:#888;border-bottom:.5pt solid #ddd;padding-bottom:.08cm;}
+.id{font-size:8pt;color:#555;letter-spacing:1px;}
+.alarma{font-size:${r.alarma?'26pt':'14pt'};font-weight:900;letter-spacing:2px;line-height:1;color:${r.alarma?'#000':'#cc0000'};word-break:break-all;}
+.cliente{font-size:8pt;font-family:'Segoe UI',sans-serif;color:#333;line-height:1.2;word-break:break-word;}
+.novedad{background:#fffbe6;border:.5pt solid #cc9900;border-radius:2pt;padding:2pt 4pt;font-size:7pt;font-family:'Segoe UI',sans-serif;color:#663300;}
+.footer{font-size:5.5pt;color:#bbb;font-family:'Segoe UI',sans-serif;margin-top:auto;padding-top:.08cm;border-top:.5pt solid #eee;}
+</style></head><body>
+<img class="qr" src="${qrDataUrl}">
+<div class="info">
+  <div class="top">🔐 Gestión de Claves</div>
+  <div class="id">${r.id}</div>
+  <div class="alarma">${r.alarma||'SIN ALARMA'}</div>
+  <div class="cliente">${r.cliente||''}</div>
+  ${r.novedad?`<div class="novedad">⚠ ${r.novedad}</div>`:''}
+  <div class="footer">${r.updatedAt||''}</div>
+</div></body></html>`);
+  win.document.close(); win.onload=()=>{win.focus();win.print();};
+}
+
+// ─── SCAN MODE ───────────────────────────────────────────────────────────────
+async function checkScanMode() {
+  const params=new URLSearchParams(window.location.search);
+  const scanId=params.get('scan');
+  if(!scanId) return;
+
+  document.body.className='scan-mode';
+  document.body.innerHTML=`
+    <div class="scan-label">🔐 Gestión de Claves</div>
+    <div class="legajo-screen">
+      <div class="legajo-title">Ingresá tu legajo</div>
+      <div class="legajo-sub">Caja: <strong style="color:#4f8ef7;font-family:monospace">${decodeURIComponent(scanId)}</strong></div>
+      <input class="legajo-input" type="number" id="legajo-input" placeholder="000000000" autofocus>
+      <button class="legajo-btn" onclick="validarLegajo('${scanId}')">Validar ›</button>
+      <div class="legajo-loading" id="legajo-status"></div>
+    </div>
+    <div class="scan-dot"></div>
+  `;
+  document.getElementById('legajo-input').addEventListener('keydown', e=>{
+    if(e.key==='Enter') validarLegajo('${scanId}');
   });
 }
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
-checkScanMode().then(() => {
-  if (!window.location.search.includes('scan=')) {
-    loadFromSheets();
+async function validarLegajo(scanId) {
+  const legajo = document.getElementById('legajo-input')?.value?.trim();
+  if(!legajo){document.getElementById('legajo-status').textContent='Ingresá tu legajo';return;}
+  document.getElementById('legajo-status').textContent='Validando…';
+  try {
+    const payload=encodeURIComponent(JSON.stringify({action:'validar',parid:decodeURIComponent(scanId),legajo}));
+    const res=await jsonp(SHEET_URL+'?action=validar&payload='+payload);
+
+    if(!res.ok||!res.autorizado){
+      document.body.innerHTML=`
+        <div class="scan-label">🔐 Gestión de Claves</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div class="scan-denied">ACCESO DENEGADO</div>
+          <div class="scan-denied-msg">Legajo no autorizado para esta caja hoy.</div>
+          <button onclick="location.reload()" style="margin-top:16px;background:#222;color:#888;border:1px solid #333;border-radius:8px;padding:10px 20px;cursor:pointer;font-size:13px">← Reintentar</button>
+        </div>
+        <div class="scan-dot" style="background:#f75f5f"></div>
+      `;
+      return;
+    }
+
+    const caja=res.caja||{};
+    const alarmaHtml=caja.alarma
+      ?`<div class="scan-sub">CÓDIGO DE ALARMA</div><div class="scan-code">${caja.alarma}</div>`
+      :`<div class="scan-sub">ALARMA</div><div class="scan-sin-alarma">SIN ALARMA</div>`;
+    const novedadHtml=caja.novedad
+      ?`<div class="scan-novedad"><div class="scan-novedad-label">⚠ Novedad</div><div class="scan-novedad-text">${caja.novedad}</div></div>`:'';
+
+    document.body.innerHTML=`
+      <div class="scan-label">🔐 Gestión de Claves</div>
+      ${alarmaHtml}
+      <div class="scan-cliente">${caja.cliente||decodeURIComponent(scanId)}</div>
+      ${novedadHtml}
+      ${res.jefe?`<div class="scan-transporte" style="color:#555;font-size:13px;margin-top:16px">👤 ${res.jefe}</div>`:''}
+      <div class="scan-dot"></div>
+    `;
+  } catch(e){
+    document.getElementById('legajo-status').textContent='Error de conexión. Reintentá.';
   }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)closeModal(el.id);});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(el=>closeModal(el.id));});
+function toast(msg,type='success'){
+  const icons={success:'✓',warning:'⚠',error:'✕'};
+  const el=document.createElement('div');el.className=`toast ${type}`;
+  el.innerHTML=`<span>${icons[type]||'•'}</span><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+checkScanMode().then(()=>{
+  if(!window.location.search.includes('scan=')) loadAll();
 });
 </script>
 </body>
