@@ -336,6 +336,7 @@
 
 <script>
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyiKB7k3EGA-_VQI5h4J2n9VduMsQk873EXEVsKYis0mDp_xPh62xofaMyGOCrcSf2K/exec';
+const TOKEN = 'clavesbrinks.2026';
 const GITHUB_URL = window.location.origin + window.location.pathname;
 
 let db = [], legajos = [], programacion = [], historial = [];
@@ -372,9 +373,9 @@ async function loadAll() {
   setSyncStatus('loading');
   try {
     const [r1, r2, r3] = await Promise.all([
-      jsonp(SHEET_URL + '?action=getAll'),
-      jsonp(SHEET_URL + '?action=getLegajos'),
-      jsonp(SHEET_URL + '?action=getProgramacion')
+      jsonp(SHEET_URL + '?token='+TOKEN+'&action=getAll'),
+      jsonp(SHEET_URL + '?token='+TOKEN+'&action=getLegajos'),
+      jsonp(SHEET_URL + '?token='+TOKEN+'&action=getProgramacion')
     ]);
     db = (r1.data||[]).map(r=>({
       id:String(r.id||'').trim(), cliente:String(r.cliente||'').trim(),
@@ -624,7 +625,7 @@ async function procesarProgramacion() {
   document.getElementById('prog-status').textContent = `Procesando ${rows.length} registros…`;
   try {
     const payload = encodeURIComponent(JSON.stringify({action:'saveProgramacion',rows}));
-    const res = await jsonp(SHEET_URL+'?action=saveProgramacion&payload='+payload);
+    const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveProgramacion&payload='+payload);
     if(res.ok){
       programacion = rows;
       updateStats();
@@ -659,7 +660,7 @@ async function importLegajos(input) {
         legajo:String(r[legCol]||'').trim()
       }));
       const payload = encodeURIComponent(JSON.stringify({action:'saveLegajos',rows:data}));
-      const res = await jsonp(SHEET_URL+'?action=saveLegajos&payload='+payload);
+      const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveLegajos&payload='+payload);
       if(res.ok){
         legajos = data;
         renderLegajosTable();
@@ -702,7 +703,7 @@ function importExcel(input) {
       });
       setSyncStatus('loading');
       const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-      await jsonp(SHEET_URL+'?action=save&payload='+payload);
+      await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
       setSyncStatus('ok');
       updateStats();renderList();
       toast(`✓ ${nuevos} nuevos, ${actualizados} actualizados`,'success');
@@ -727,7 +728,7 @@ async function saveNovedad() {
   setSyncStatus('loading');
   try{
     const payload=encodeURIComponent(JSON.stringify({action:'updateNovedad',id:r.id,novedad}));
-    await jsonp(SHEET_URL+'?action=updateNovedad&payload='+payload);
+    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=updateNovedad&payload='+payload);
     setSyncStatus('ok'); toast(novedad?'Novedad guardada':'Novedad borrada','success');
   }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
   closeModal('modal-novedad'); updateStats(); renderList(); renderDetail();
@@ -754,7 +755,7 @@ async function saveEdit() {
   setSyncStatus('loading');
   try{
     const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-    await jsonp(SHEET_URL+'?action=save&payload='+payload);
+    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
     setSyncStatus('ok'); toast('Registro actualizado','success');
   }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
   closeModal('modal-edit'); renderList(); renderDetail();
@@ -775,7 +776,7 @@ async function createRecord() {
   setSyncStatus('loading');
   try{
     const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-    await jsonp(SHEET_URL+'?action=save&payload='+payload);
+    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
     setSyncStatus('ok'); toast(`Registro ${id} creado`,'success');
   }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
   closeModal('modal-new'); updateStats(); renderList(); selectRecord(id);
@@ -788,7 +789,7 @@ async function deleteRecord(id) {
   setSyncStatus('loading');
   try{
     const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-    await jsonp(SHEET_URL+'?action=save&payload='+payload);
+    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
     setSyncStatus('ok'); toast('Eliminado','warning');
   }catch(e){setSyncStatus('err');}
   updateStats(); renderList(); renderDetail();
@@ -862,7 +863,7 @@ async function validarLegajo(scanId) {
   document.getElementById('legajo-status').textContent='Validando…';
   try {
     const payload=encodeURIComponent(JSON.stringify({action:'validar',parid:decodeURIComponent(scanId),legajo}));
-    const res=await jsonp(SHEET_URL+'?action=validar&payload='+payload);
+    const res=await jsonp(SHEET_URL+'?token='+TOKEN+'&action=validar&payload='+payload);
 
     if(!res.ok||!res.autorizado){
       document.body.innerHTML=`
@@ -915,7 +916,7 @@ function toast(msg,type='success'){
 async function loadHistorial() {
   document.getElementById('hist-table-container').innerHTML = '<div style="color:var(--text3);font-size:13px">Cargando…</div>';
   try {
-    const res = await jsonp(SHEET_URL + '?action=getHistorial');
+    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getHistorial');
     historial = res.data || [];
     renderHistorial();
   } catch(e) {
