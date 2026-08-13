@@ -482,14 +482,19 @@ function renderProgTable() {
   const el = document.getElementById('prog-table-container');
   if(!programacion.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin programación cargada. Importá los archivos arriba.</div>';return;}
   el.innerHTML=`<table class="prog-table">
-    <thead><tr><th>ParID</th><th>RutaID</th><th>Jefe de Equipo</th><th>Legajo</th></tr></thead>
-    <tbody>${programacion.map(p=>`
-      <tr>
+    <thead><tr><th>ParID</th><th>RutaID</th><th>Jefe de Equipo</th><th>Legajo</th><th>Alarma</th></tr></thead>
+    <tbody>${programacion.map(p=>{
+      const caja = db.find(x=>x.id===p.parid.trim());
+      const alarma = caja ? (caja.alarma || 'SIN ALARMA') : '—';
+      const alarmaColor = caja && caja.alarma ? 'var(--accent)' : 'var(--danger)';
+      return `<tr>
         <td><span class="prog-id">${p.parid}</span></td>
         <td>${p.rutid}</td>
         <td>${p.jefe||'—'}</td>
         <td style="font-family:var(--mono);font-size:12px">${p.legajo_jefe||'—'}</td>
-      </tr>`).join('')}
+        <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${alarma}</td>
+      </tr>`;
+    }).join('')}
     </tbody>
   </table>`;
 }
