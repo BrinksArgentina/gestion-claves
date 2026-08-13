@@ -581,19 +581,20 @@ function checkProcesar() {
 // ─── PROCESAR PROGRAMACION ────────────────────────────────────────────────────
 async function procesarProgramacion() {
   if(!diarioData||!reporteData) return;
-  // Cross-reference: for each parid, get rutid, then get jefe from reporte by rutid
-  const rows = diarioData.map(d=>{
-    const rutid = d.rutid;
-    // Reporte usa ruta sin leading zeros: '248' == '248'
-    const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
-    // Get legajo from legajos list
-    const legObj = legajos.find(l=>{
-      const nombre = (l.nombre||l['Nombre Jefe de equipo']||'').toUpperCase();
-      return jefe.toUpperCase().includes(nombre.split(' ')[0]) || nombre.includes(jefe.split(',')[0]?.trim().toUpperCase());
-    });
-    const legajo_jefe = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
-    return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe };
-  }).filter(r=>r.jefe); // solo los que tienen jefe asignado
+  // Solo procesar ParIds que existen en nuestra DB de cajas
+  const misIds = new Set(db.map(r=>r.id.trim()));
+  const rows = diarioData
+    .filter(d => misIds.has(d.parid.trim()))
+    .map(d=>{
+      const rutid = d.rutid;
+      const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
+      const legObj = legajos.find(l=>{
+        const nombre = (l.nombre||l['Nombre Jefe de equipo']||'').toUpperCase();
+        return jefe.toUpperCase().includes(nombre.split(' ')[0]) || nombre.includes(jefe.split(',')[0]?.trim().toUpperCase());
+      });
+      const legajo_jefe = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
+      return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe };
+    }).filter(r=>r.jefe);
 
   document.getElementById('prog-status').textContent = `Procesando ${rows.length} registros…`;
   try {
