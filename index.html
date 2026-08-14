@@ -299,7 +299,10 @@
     <div id="legajos-result"></div>
   </div>
   <div class="card">
-    <div class="card-title">Jefes de equipo registrados</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="card-title" style="margin-bottom:0">Jefes de equipo registrados</div>
+      <input class="search-box" type="text" id="legajos-search" placeholder="Buscar nombre o legajo…" oninput="renderLegajosTable()" style="max-width:240px">
+    </div>
     <div id="legajos-table-container"><div style="color:var(--text3);font-size:13px">Cargando…</div></div>
   </div>
 </div>
@@ -596,10 +599,19 @@ function renderProgTable() {
 // ─── LEGAJOS TABLE ────────────────────────────────────────────────────────────
 function renderLegajosTable() {
   const el = document.getElementById('legajos-table-container');
+  if(!el) return;
   if(!legajos.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin legajos. Importá el archivo de Jefes de Equipo.</div>';return;}
-  el.innerHTML=`<table class="leg-table">
+  const q = (document.getElementById('legajos-search')?.value||'').toLowerCase();
+  const filtrados = legajos.filter(l => {
+    const nombre = (l.nombre||l['Nombre Jefe de equipo']||'').toLowerCase();
+    const leg = String(l.legajo||l['Legajo']||'').toLowerCase();
+    return !q || nombre.includes(q) || leg.includes(q);
+  });
+  if(!filtrados.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin resultados.</div>';return;}
+  el.innerHTML=`<div style="font-size:12px;color:var(--text3);margin-bottom:8px">${filtrados.length} de ${legajos.length} registros</div>
+  <table class="leg-table">
     <thead><tr><th>Nombre</th><th>Legajo</th></tr></thead>
-    <tbody>${legajos.map(l=>`
+    <tbody>${filtrados.map(l=>`
       <tr><td>${l.nombre||l['Nombre Jefe de equipo']||''}</td>
       <td style="font-family:var(--mono);font-size:12px">${l.legajo||l['Legajo']||''}</td></tr>`).join('')}
     </tbody>
