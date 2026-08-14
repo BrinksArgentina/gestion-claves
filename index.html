@@ -93,6 +93,8 @@
   .btn-sync{background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer;}
   .btn-sync:hover{color:var(--text);}
   .no-results{padding:20px;text-align:center;color:var(--text3);font-size:13px;}
+  .filter-btn{flex:1;padding:6px 8px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);transition:all .2s;}
+  .filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 
   /* MAIN */
   main{overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px;}
@@ -221,6 +223,10 @@
   <aside class="sidebar">
     <div class="sidebar-top">
       <input class="search-box" type="text" id="search" placeholder="Buscar ID, cliente, alarma…" oninput="renderList()">
+      <div style="display:flex;gap:6px;">
+        <button class="filter-btn active" id="filter-todos" onclick="setFilter('todos')">Todos</button>
+        <button class="filter-btn" id="filter-prog" onclick="setFilter('prog')">📅 Programados hoy</button>
+      </div>
     </div>
     <div class="record-list" id="record-list"></div>
     <div class="sidebar-footer">
@@ -372,6 +378,7 @@ const TOKEN = 'clavesbrinks.2026';
 const GITHUB_URL = window.location.origin + window.location.pathname;
 
 let db = [], legajos = [], programacion = [], historial = [];
+let activeFilter = 'todos';
 let selectedId = null, novedadTarget = null;
 let diarioData = null, reporteData = null;
 let activeTab = 'claves';
@@ -446,14 +453,23 @@ function switchTab(tab) {
 }
 
 // ─── LIST ────────────────────────────────────────────────────────────────────
+function setFilter(f) {
+  activeFilter = f;
+  document.getElementById('filter-todos').classList.toggle('active', f === 'todos');
+  document.getElementById('filter-prog').classList.toggle('active', f === 'prog');
+  renderList();
+}
+
 function renderList() {
   const q = document.getElementById('search').value.toLowerCase();
-  const filtered = db.filter(r =>
-    r.id.toLowerCase().includes(q)||r.cliente.toLowerCase().includes(q)||r.alarma.toLowerCase().includes(q)
-  );
+  const progIds = new Set(programacion.map(p=>String(p.parid).trim()));
+  const filtered = db.filter(r => {
+    const matchQ = r.id.toLowerCase().includes(q)||r.cliente.toLowerCase().includes(q)||r.alarma.toLowerCase().includes(q);
+    const matchF = activeFilter === 'todos' || progIds.has(r.id);
+    return matchQ && matchF;
+  });
   const el = document.getElementById('record-list');
   if(!filtered.length){el.innerHTML='<div class="no-results">Sin resultados</div>';return;}
-  const progIds = new Set(programacion.map(p=>String(p.parid).trim()));
   el.innerHTML = filtered.map(r=>`
     <div class="record-item ${r.id===selectedId?'active':''}" onclick="selectRecord('${r.id}')">
       <div class="record-item-id">${r.id}</div>
@@ -662,9 +678,19 @@ async function procesarProgramacion() {
     const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveProgramacion&payload='+payload);
     if(res.ok){
       programacion = rows;
+      // Actualizar updatedAt de las cajas programadas hoy
+      const progIds = new Set(rows.map(r=>r.parid.trim()));
+      const fechaHoy = now();
+      db.forEach(caja => {
+        if(progIds.has(caja.id.trim())) caja.updatedAt = fechaHoy;
+      });
+      // Guardar en Sheets
+      const payloadCajas = encodeURIComponent(JSON.stringify({action:'save',rows:db}));
+      await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payloadCajas);
       updateStats();
       renderProgTable();
       renderList();
+      if(selectedId) renderDetail();
       document.getElementById('prog-status').textContent = `✓ ${rows.length} registros cargados`;
       toast(`Programación: ${rows.length} registros`,'success');
     }
@@ -969,20 +995,21 @@ function renderHistorial() {
   const el = document.getElementById('hist-table-container');
   if(!filtered.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">Sin registros</div>';return;}
   el.innerHTML=`<table class="prog-table">
-    <thead><tr><th>Fecha archivo</th><th>ParID</th><th>RutaID</th><th>Parada</th><th>Jefe de Equipo</th><th>Legajo</th><th>Alarma</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>ParID</th><th>RutaID</th><th>Parada</th><th>Jefe anterior</th><th>Jefe nuevo</th><th>Tipo</th></tr></thead>
     <tbody>${filtered.map(h=>{
-      const caja = db.find(x=>x.id===String(h.parid||'').trim());
-      const alarma = caja ? (caja.alarma||'SIN ALARMA') : '—';
-      const alarmaColor = caja && caja.alarma ? 'var(--accent)' : 'var(--danger)';
-      const histUid = 'hist_' + (h.parid||'') + '_' + (h.fecha_archivo||'').replace(/[\s/:,]/g,'');
+      const tipoBadge = h.tipo_cambio === 'Cambio de jefe'
+        ? `<span style="background:rgba(247,162,79,.15);color:var(--warning);font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">⇄ Cambio de jefe</span>`
+        : `<span style="background:rgba(62,207,142,.1);color:var(--success);font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">✓ Carga inicial</span>`;
+      const jefeAnterior = h.jefe_anterior && h.jefe_anterior !== '—' ? h.jefe_anterior : '—';
+      const jefeNuevo = h.jefe_nuevo && h.jefe_nuevo !== '—' ? h.jefe_nuevo : '—';
       return `<tr>
-        <td style="font-size:12px;color:var(--text3)">${h.fecha_archivo||'—'}</td>
+        <td style="font-size:11px;color:var(--text3)">${h.fecha_archivo||'—'}</td>
         <td><span class="prog-id">${h.parid||'—'}</span></td>
         <td>${h.rutid||'—'}</td>
         <td style="color:var(--text2)">${h.parada||'—'}</td>
-        <td>${h.jefe||'—'}</td>
-        <td style="font-family:var(--mono);font-size:12px">${h.legajo_jefe||'—'}</td>
-        <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:${alarmaColor}">${caja && caja.alarma ? maskAlarma(caja.alarma, histUid) : alarma}</td>
+        <td style="font-size:12px">${jefeAnterior}</td>
+        <td style="font-size:12px;color:var(--accent);font-weight:600">${jefeNuevo}</td>
+        <td>${tipoBadge}</td>
       </tr>`;
     }).join('')}
     </tbody>
