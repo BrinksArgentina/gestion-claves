@@ -328,7 +328,9 @@
       <div class="card-title" style="margin-bottom:0">Intentos de acceso</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span id="intentos-live" style="font-size:11px;color:var(--success)">● Auto-refresh 30s</span>
-        <input class="search-box" type="text" id="intentos-search" placeholder="Buscar ParID, legajo, jefe…" oninput="renderIntentos()" style="max-width:220px">
+        <input class="search-box" type="text" id="intentos-search" placeholder="Buscar ParID, legajo, jefe…" oninput="renderIntentos()" style="max-width:200px">
+        <input class="search-box" type="date" id="intentos-fecha" onchange="renderIntentos()" style="max-width:150px">
+        <button class="btn btn-secondary" style="font-size:12px;padding:7px 10px" onclick="document.getElementById('intentos-fecha').value='';renderIntentos()">✕ Fecha</button>
         <select id="intentos-filter" onchange="renderIntentos()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;outline:none;">
           <option value="todos">Todos</option>
           <option value="OK">✓ Autorizados</option>
@@ -1030,6 +1032,7 @@ function renderIntentos() {
   const q = (document.getElementById('intentos-search')?.value||'').toLowerCase();
   const filtro = document.getElementById('intentos-filter')?.value||'todos';
 
+  const fechaFiltro = document.getElementById('intentos-fecha')?.value||'';
   let filtrados = [...intentos].reverse();
   if (q) filtrados = filtrados.filter(i =>
     String(i.parid||'').toLowerCase().includes(q) ||
@@ -1037,6 +1040,11 @@ function renderIntentos() {
     String(i.jefe||'').toLowerCase().includes(q)
   );
   if (filtro !== 'todos') filtrados = filtrados.filter(i => i.resultado === filtro);
+  if (fechaFiltro) {
+    const [yyyy,mm,dd] = fechaFiltro.split('-');
+    const fechaBuscar = dd+'/'+mm+'/'+yyyy;
+    filtrados = filtrados.filter(i => String(i.fecha||'').includes(fechaBuscar));
+  }
 
   // Stats
   const total = intentos.length;
