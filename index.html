@@ -216,6 +216,7 @@
   <div class="tab" onclick="switchTab('programacion')">📅 Programación</div>
   <div class="tab" onclick="switchTab('legajos')">👤 Legajos</div>
   <div class="tab" onclick="switchTab('historial')">📜 Historial</div>
+  <div class="tab" onclick="switchTab('intentos')">🔍 Intentos</div>
 </div>
 
 <!-- TAB: CLAVES -->
@@ -283,16 +284,6 @@
     <div id="prog-table-container"><div style="color:var(--text3);font-size:13px">Cargando…</div></div>
   </div>
 
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div class="card-title" style="margin-bottom:0">Intentos de acceso hoy</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span id="intentos-live" style="font-size:11px;color:var(--success)">● Auto-refresh 30s</span>
-        <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="loadIntentos()">⟳ Actualizar</button>
-      </div>
-    </div>
-    <div id="intentos-container"><div style="color:var(--text3);font-size:13px">Sin intentos hoy.</div></div>
-  </div>
 </div>
 
 <!-- TAB: LEGAJOS -->
@@ -324,6 +315,27 @@
       <button class="btn btn-secondary" onclick="loadHistorial()" style="margin-left:auto">⟳ Actualizar</button>
     </div>
     <div id="hist-table-container"><div style="color:var(--text3);font-size:13px">Cargando…</div></div>
+  </div>
+</div>
+
+<!-- TAB: INTENTOS -->
+<div id="tab-intentos" style="display:none" class="panel-full">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="card-title" style="margin-bottom:0">Intentos de acceso</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span id="intentos-live" style="font-size:11px;color:var(--success)">● Auto-refresh 30s</span>
+        <input class="search-box" type="text" id="intentos-search" placeholder="Buscar ParID, legajo, jefe…" oninput="renderIntentos()" style="max-width:220px">
+        <select id="intentos-filter" onchange="renderIntentos()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;outline:none;">
+          <option value="todos">Todos</option>
+          <option value="OK">✓ Autorizados</option>
+          <option value="DENEGADO">✕ Denegados</option>
+        </select>
+        <button class="btn btn-secondary" style="font-size:12px;padding:7px 12px" onclick="loadIntentos()">⟳ Actualizar</button>
+      </div>
+    </div>
+    <div id="intentos-stats" style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap"></div>
+    <div id="intentos-container"><div style="color:var(--text3);font-size:13px">Sin intentos registrados.</div></div>
   </div>
 </div>
 
@@ -457,11 +469,12 @@ function switchTab(tab) {
   document.getElementById('tab-programacion').style.display = tab==='programacion' ? 'block' : 'none';
   document.getElementById('tab-legajos').style.display = tab==='legajos' ? 'block' : 'none';
   document.getElementById('tab-historial').style.display = tab==='historial' ? 'block' : 'none';
+  document.getElementById('tab-intentos').style.display = tab==='intentos' ? 'block' : 'none';
   document.querySelectorAll('.tab').forEach((el,i) => {
-    el.classList.toggle('active', ['claves','programacion','legajos','historial'][i]===tab);
+    el.classList.toggle('active', ['claves','programacion','legajos','historial','intentos'][i]===tab);
   });
   if(tab==='historial' && historial.length===0) loadHistorial();
-  if(tab==='programacion') loadIntentos();
+  if(tab==='intentos') loadIntentos();
 }
 
 // ─── LIST ────────────────────────────────────────────────────────────────────
@@ -1000,19 +1013,39 @@ async function loadIntentos() {
 
 function renderIntentos() {
   const el = document.getElementById('intentos-container');
+  const statsEl = document.getElementById('intentos-stats');
   if (!el) return;
-  const hoy = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
-  const filtrados = intentos.filter(i => String(i.fecha||'').includes(hoy.split('/')[0]+'/'+hoy.split('/')[1]));
+  const q = (document.getElementById('intentos-search')?.value||'').toLowerCase();
+  const filtro = document.getElementById('intentos-filter')?.value||'todos';
+
+  let filtrados = [...intentos].reverse();
+  if (q) filtrados = filtrados.filter(i =>
+    String(i.parid||'').toLowerCase().includes(q) ||
+    String(i.legajo_ingresado||'').toLowerCase().includes(q) ||
+    String(i.jefe||'').toLowerCase().includes(q)
+  );
+  if (filtro !== 'todos') filtrados = filtrados.filter(i => i.resultado === filtro);
+
+  // Stats
+  const total = intentos.length;
+  const autorizados = intentos.filter(i=>i.resultado==='OK').length;
+  const denegados = intentos.filter(i=>i.resultado==='DENEGADO').length;
+  if (statsEl) statsEl.innerHTML = `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px">Total: <strong>${total}</strong></div>
+    <div style="background:rgba(10,138,90,.1);border:1px solid rgba(10,138,90,.3);border-radius:8px;padding:8px 14px;font-size:12px;color:#0a8a5a">✓ Autorizados: <strong>${autorizados}</strong></div>
+    <div style="background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.3);border-radius:8px;padding:8px 14px;font-size:12px;color:#c0392b">✕ Denegados: <strong>${denegados}</strong></div>
+  `;
+
   if (!filtrados.length) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px">Sin intentos hoy.</div>';
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px">Sin intentos.</div>';
     return;
   }
-  const rows = [...filtrados].reverse().map(i => {
+  const rows = filtrados.map(i => {
     const ok = i.resultado === 'OK';
     const badge = ok
       ? '<span style="background:rgba(10,138,90,.15);color:#0a8a5a;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700">✓ Autorizado</span>'
       : '<span style="background:rgba(192,57,43,.15);color:#c0392b;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700">✕ Denegado</span>';
-    return `<tr style="background:${ok ? 'rgba(10,138,90,.04)' : 'rgba(192,57,43,.04)'}">
+    return `<tr style="background:${ok ? 'rgba(10,138,90,.03)' : 'rgba(192,57,43,.03)'}">
       <td style="font-size:11px;color:var(--text3)">${i.fecha||'—'}</td>
       <td><span class="prog-id">${i.parid||'—'}</span></td>
       <td style="font-family:var(--mono);font-size:12px;font-weight:700">${i.legajo_ingresado||'—'}</td>
