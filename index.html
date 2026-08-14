@@ -282,6 +282,17 @@
     <div class="card-title">Programación cargada hoy</div>
     <div id="prog-table-container"><div style="color:var(--text3);font-size:13px">Cargando…</div></div>
   </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">Intentos de acceso hoy</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="intentos-live" style="font-size:11px;color:var(--success)">● Auto-refresh 30s</span>
+        <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="loadIntentos()">⟳ Actualizar</button>
+      </div>
+    </div>
+    <div id="intentos-container"><div style="color:var(--text3);font-size:13px">Sin intentos hoy.</div></div>
+  </div>
 </div>
 
 <!-- TAB: LEGAJOS -->
@@ -450,6 +461,7 @@ function switchTab(tab) {
     el.classList.toggle('active', ['claves','programacion','legajos','historial'][i]===tab);
   });
   if(tab==='historial' && historial.length===0) loadHistorial();
+  if(tab==='programacion') loadIntentos();
 }
 
 // ─── LIST ────────────────────────────────────────────────────────────────────
@@ -972,6 +984,56 @@ function toast(msg,type='success'){
   setTimeout(()=>el.remove(),3000);
 }
 
+// ─── INTENTOS ────────────────────────────────────────────────────────────────
+let intentos = [];
+let intentosTimer = null;
+
+async function loadIntentos() {
+  try {
+    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getIntentos');
+    intentos = res.data || [];
+    renderIntentos();
+  } catch(e) {
+    console.error('Error cargando intentos', e);
+  }
+}
+
+function renderIntentos() {
+  const el = document.getElementById('intentos-container');
+  if (!el) return;
+  const hoy = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const filtrados = intentos.filter(i => String(i.fecha||'').includes(hoy.split('/')[0]+'/'+hoy.split('/')[1]));
+  if (!filtrados.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px">Sin intentos hoy.</div>';
+    return;
+  }
+  const rows = [...filtrados].reverse().map(i => {
+    const ok = i.resultado === 'OK';
+    const badge = ok
+      ? '<span style="background:rgba(10,138,90,.15);color:#0a8a5a;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700">✓ Autorizado</span>'
+      : '<span style="background:rgba(192,57,43,.15);color:#c0392b;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700">✕ Denegado</span>';
+    return `<tr style="background:${ok ? 'rgba(10,138,90,.04)' : 'rgba(192,57,43,.04)'}">
+      <td style="font-size:11px;color:var(--text3)">${i.fecha||'—'}</td>
+      <td><span class="prog-id">${i.parid||'—'}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;font-weight:700">${i.legajo_ingresado||'—'}</td>
+      <td style="font-size:12px">${i.jefe||'—'}</td>
+      <td style="font-size:11px;color:var(--text3)">${i.rutid||'—'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="prog-table">
+    <thead><tr><th>Fecha/Hora</th><th>ParID</th><th>Legajo</th><th>Jefe</th><th>Ruta</th><th>Resultado</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function startIntentosAutoRefresh() {
+  if (intentosTimer) clearInterval(intentosTimer);
+  intentosTimer = setInterval(() => {
+    if (activeTab === 'programacion') loadIntentos();
+  }, 30000);
+}
+
 // ─── HISTORIAL ───────────────────────────────────────────────────────────────
 async function loadHistorial() {
   document.getElementById('hist-table-container').innerHTML = '<div style="color:var(--text3);font-size:13px">Cargando…</div>';
@@ -1099,6 +1161,7 @@ function checkLogin() {
 checkScanMode().then(()=>{
   if(!window.location.search.includes('scan=')) initLogin();
 });
+startIntentosAutoRefresh();
 </script>
 </body>
 </html>
