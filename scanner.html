@@ -49,6 +49,10 @@
   .dot{width:8px;height:8px;background:#4f8ef7;border-radius:50%;margin:24px auto 0;}
   .denied-code{font-size:clamp(28px,10vw,52px);font-weight:900;color:#f75f5f;font-family:'Courier New',monospace;}
   .denied-msg{color:#666;font-size:14px;max-width:280px;}
+  .fuera-horario-icon{font-size:64px;margin-bottom:16px;}
+  .fuera-horario-title{font-size:clamp(20px,7vw,36px);font-weight:900;color:#f75f5f;text-align:center;font-family:'Courier New',monospace;}
+  .fuera-horario-msg{color:#666;font-size:14px;max-width:280px;text-align:center;line-height:1.6;}
+  .fuera-horario-horario{color:#444;font-size:13px;margin-top:12px;padding:10px 18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;text-align:center;}
 </style>
 </head>
 <body>
@@ -86,6 +90,15 @@
   </div>
 </div>
 
+<!-- PANTALLA FUERA DE HORARIO -->
+<div id="screen-fuera-horario" style="display:none;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:340px;text-align:center">
+  <div class="fuera-horario-icon">🔴</div>
+  <div class="fuera-horario-title">SISTEMA FUERA<br>DE HORARIO</div>
+  <div class="fuera-horario-msg">El acceso con QR no está habilitado en este momento.</div>
+  <div class="fuera-horario-horario" id="fuera-horario-info"></div>
+  <button class="btn-volver" style="margin-top:20px" onclick="volverInicio()">← Intentar de nuevo</button>
+</div>
+
 <!-- PANTALLA RESULTADO -->
 <div id="screen-resultado" style="display:none">
   <div class="resultado-screen" id="resultado-content"></div>
@@ -102,7 +115,7 @@ let scannerInterval = null;
 let currentScanId = null;
 
 function show(id) {
-  ['screen-inicio','screen-legajo','screen-resultado'].forEach(s => {
+  ['screen-inicio','screen-legajo','screen-resultado','screen-fuera-horario'].forEach(s => {
     document.getElementById(s).style.display = s===id ? 'flex' : 'none';
     document.getElementById(s).style.flexDirection = 'column';
     document.getElementById(s).style.alignItems = 'center';
@@ -167,15 +180,37 @@ function stopScanner() {
   document.getElementById('scanner-status').textContent = 'Presioná el botón para escanear';
 }
 
-function handleQR(raw) {
+async function handleQR(raw) {
   let scanId = raw;
   try { const u = new URL(raw); scanId = u.searchParams.get('scan') || raw; } catch(e) {}
   currentScanId = decodeURIComponent(scanId).trim();
+
+  // Verificar horario antes de mostrar pantalla de legajo
+  const dentroHorario = await checkHorario();
+  if (!dentroHorario) return;
+
   document.getElementById('legajo-caja-id').textContent = 'Caja: ' + currentScanId;
   document.getElementById('legajo-input').value = '';
   document.getElementById('legajo-status').textContent = '';
   show('screen-legajo');
   setTimeout(() => document.getElementById('legajo-input').focus(), 100);
+}
+
+async function checkHorario() {
+  try {
+    const payload = encodeURIComponent(JSON.stringify({action:'checkHorario'}));
+    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=checkHorario&payload='+payload);
+    if (res.ok && res.dentroHorario === false) {
+      const info = document.getElementById('fuera-horario-info');
+      info.textContent = 'Horario habilitado: ' + (res.inicio||'05:00') + ' – ' + (res.fin||'21:00');
+      show('screen-fuera-horario');
+      return false;
+    }
+    return true;
+  } catch(e) {
+    // Si hay error de conexión, permitir pasar (falla abierta)
+    return true;
+  }
 }
 
 // ─── VALIDAR ─────────────────────────────────────────────────────────────────
