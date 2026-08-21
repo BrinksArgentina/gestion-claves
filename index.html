@@ -905,14 +905,15 @@ async function procesarProgramacion() {
   document.getElementById('prog-status').textContent = `Procesando ${rows.length} registros…`;
   try {
     // Armar lista de todos los JE en recorrido hoy (del Reporte_Hoy completo)
+    // Se mandan TODOS aunque no tengan legajo en la hoja legajos
     const recorridos = Object.entries(reporteData).map(([ruta, jefe]) => {
       const legObj = legajos.find(l => {
         const nombre = (l.nombre||l['Nombre Jefe de equipo']||'').toUpperCase();
         return jefe.toUpperCase().includes(nombre.split(' ')[0]) || nombre.includes(jefe.split(',')[0]?.trim().toUpperCase());
       });
-      const legajo = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
+      const legajo = legObj ? String(legObj.legajo||legObj['Legajo']||'') : '';
       return { ruta, jefe, legajo };
-    }).filter(r => r.jefe && r.legajo);
+    }).filter(r => r.jefe); // solo filtrar vacíos, legajo puede estar vacío
 
     const payload = encodeURIComponent(JSON.stringify({action:'saveProgramacion', rows, recorridos}));
     const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveProgramacion&payload='+payload);
