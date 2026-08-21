@@ -1753,7 +1753,7 @@ function editClave(idx) {
   document.getElementById('csf-edit-clave').value = r.clave;
   document.getElementById('csf-edit-sobre').value = r.n_sobre;
   document.getElementById('csf-edit-idx').value = idx;
-  document.getElementById('modal-csf-edit').style.display = 'flex';
+  openModal('modal-csf-edit');
 }
 
 async function saveClaveCompusafe() {
