@@ -99,6 +99,16 @@
   <button class="btn-volver" style="margin-top:20px" onclick="volverInicio()">← Intentar de nuevo</button>
 </div>
 
+<!-- PANTALLA RESULTADO COMPUSAFE -->
+<div id="screen-compusafe" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:340px;text-align:center">
+  <div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">COMPUSAFE — CLAVE SEMANAL</div>
+  <div id="csf-alarma" style="font-family:'Courier New',monospace;font-size:clamp(64px,20vw,110px);font-weight:900;letter-spacing:4px;line-height:1;color:#fff"></div>
+  <div id="csf-semana-info" style="color:#555;font-size:13px"></div>
+  <div id="csf-jefe-info" style="color:#444;font-size:12px;margin-top:4px"></div>
+  <div class="dot"></div>
+  <button class="btn-volver" style="margin-top:16px" onclick="volverInicio()">← Escanear otra vez</button>
+</div>
+
 <!-- PANTALLA RESULTADO -->
 <div id="screen-resultado" style="display:none">
   <div class="resultado-screen" id="resultado-content"></div>
@@ -115,7 +125,7 @@ let scannerInterval = null;
 let currentScanId = null;
 
 function show(id) {
-  ['screen-inicio','screen-legajo','screen-resultado','screen-fuera-horario'].forEach(s => {
+  ['screen-inicio','screen-legajo','screen-resultado','screen-fuera-horario','screen-compusafe'].forEach(s => {
     document.getElementById(s).style.display = s===id ? 'flex' : 'none';
     document.getElementById(s).style.flexDirection = 'column';
     document.getElementById(s).style.alignItems = 'center';
@@ -189,6 +199,16 @@ async function handleQR(raw) {
   const dentroHorario = await checkHorario();
   if (!dentroHorario) return;
 
+  // QR Compusafe → flujo especial
+  if (currentScanId === 'COMPUSAFE') {
+    document.getElementById('legajo-caja-id').textContent = '🏦 Equipo Compusafe';
+    document.getElementById('legajo-input').value = '';
+    document.getElementById('legajo-status').textContent = '';
+    show('screen-legajo');
+    setTimeout(() => document.getElementById('legajo-input').focus(), 100);
+    return;
+  }
+
   document.getElementById('legajo-caja-id').textContent = 'Caja: ' + currentScanId;
   document.getElementById('legajo-input').value = '';
   document.getElementById('legajo-status').textContent = '';
@@ -229,6 +249,30 @@ async function validar() {
   const legajo = document.getElementById('legajo-input').value.trim();
   if (!legajo) { document.getElementById('legajo-status').textContent = 'Ingresá tu legajo'; return; }
   document.getElementById('legajo-status').textContent = 'Validando…';
+
+  // Flujo Compusafe
+  if (currentScanId === 'COMPUSAFE') {
+    try {
+      const payload = encodeURIComponent(JSON.stringify({action:'validarCompusafe', legajo}));
+      const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validarCompusafe&payload='+payload);
+      if (!res.ok || !res.autorizado) {
+        show('screen-resultado');
+        document.getElementById('resultado-content').innerHTML = `
+          <div class="denied-code">ACCESO DENEGADO</div>
+          <div class="denied-msg">Legajo no autorizado para hoy.</div>
+        `;
+        return;
+      }
+      document.getElementById('csf-alarma').textContent = res.clave || '—';
+      document.getElementById('csf-semana-info').textContent = (res.semana || '') + '  |  Sobre N° ' + (res.n_sobre || '');
+      document.getElementById('csf-jefe-info').textContent = res.jefe ? '👤 ' + res.jefe : '';
+      show('screen-compusafe');
+    } catch(e) {
+      document.getElementById('legajo-status').textContent = 'Error de conexión. Reintentá.';
+    }
+    return;
+  }
+
   try {
     const payload = encodeURIComponent(JSON.stringify({action:'validar', parid:currentScanId, legajo}));
     const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validar&payload='+payload);
