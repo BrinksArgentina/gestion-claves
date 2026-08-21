@@ -884,6 +884,20 @@ function checkProcesar() {
   document.getElementById('btn-procesar').disabled = !(diarioData && reporteData);
 }
 
+// Reporte_Hoy: "SCHMIDT ,ANGEL OSCAR" (APELLIDO ,NOMBRE)
+// Jefes_de_Equipo: "ANGEL OSCAR SCHMIDT" (NOMBRE APELLIDO)
+// Match por intersección de palabras significativas (≥4 chars, ≥2 coincidencias)
+function matchNombre(nombreReporte, nombreLegajo) {
+  const palabras = str => str.toUpperCase()
+    .replace(/,/g, ' ')
+    .split(/\s+/)
+    .filter(p => p.length >= 4);
+  const a = new Set(palabras(nombreReporte));
+  const b = palabras(nombreLegajo);
+  const comunes = b.filter(p => a.has(p));
+  return comunes.length >= 2;
+}
+
 // ─── PROCESAR PROGRAMACION ────────────────────────────────────────────────────
 async function procesarProgramacion() {
   if(!diarioData||!reporteData) return;
@@ -894,10 +908,7 @@ async function procesarProgramacion() {
     .map(d=>{
       const rutid = d.rutid;
       const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
-      const legObj = legajos.find(l=>{
-        const nombre = (l.nombre||l['Nombre Jefe de equipo']||'').toUpperCase();
-        return jefe.toUpperCase().includes(nombre.split(' ')[0]) || nombre.includes(jefe.split(',')[0]?.trim().toUpperCase());
-      });
+      const legObj = legajos.find(l=> matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||''));
       const legajo_jefe = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
       return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe, parada:d.parada||'' };
     }).filter(r=>r.jefe);
@@ -905,15 +916,11 @@ async function procesarProgramacion() {
   document.getElementById('prog-status').textContent = `Procesando ${rows.length} registros…`;
   try {
     // Armar lista de todos los JE en recorrido hoy (del Reporte_Hoy completo)
-    // Se mandan TODOS aunque no tengan legajo en la hoja legajos
     const recorridos = Object.entries(reporteData).map(([ruta, jefe]) => {
-      const legObj = legajos.find(l => {
-        const nombre = (l.nombre||l['Nombre Jefe de equipo']||'').toUpperCase();
-        return jefe.toUpperCase().includes(nombre.split(' ')[0]) || nombre.includes(jefe.split(',')[0]?.trim().toUpperCase());
-      });
+      const legObj = legajos.find(l => matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||''));
       const legajo = legObj ? String(legObj.legajo||legObj['Legajo']||'') : '';
       return { ruta, jefe, legajo };
-    }).filter(r => r.jefe); // solo filtrar vacíos, legajo puede estar vacío
+    }).filter(r => r.jefe);
 
     const payload = encodeURIComponent(JSON.stringify({action:'saveProgramacion', rows, recorridos}));
     const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveProgramacion&payload='+payload);
