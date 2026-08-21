@@ -502,7 +502,7 @@
         <canvas id="csf-qr-canvas"></canvas>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;justify-content:center">
-        <div style="font-size:13px;color:var(--text3)">Este QR lleva el valor <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">COMPUSAFE</code>. Es el mismo para todos los equipos.</div>
+        <div style="font-size:13px;color:var(--text3)">Este QR abre el scanner directamente en el equipo. Es el mismo para todos los equipos Compusafe.</div>
         <button class="btn btn-secondary" onclick="downloadQR()">⬇ Descargar QR</button>
       </div>
     </div>
@@ -1799,14 +1799,12 @@ async function saveClaveCompusafe() {
 
 // ─── QR GENERATOR (sin librerías externas) ───────────────────────────────────
 function generateQR() {
-  // Usar API de QR externo para generar el canvas
   const canvas = document.getElementById('csf-qr-canvas');
   const size = 160;
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
-
-  // Cargar QR via imagen desde API pública
+  const qrData = encodeURIComponent('https://brinksargentina.github.io/gestion-claves/scanner.html?scan=COMPUSAFE');
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
@@ -1815,15 +1813,14 @@ function generateQR() {
     ctx.drawImage(img, 0, 0, size, size);
   };
   img.onerror = () => {
-    // Fallback: texto si no carga la imagen
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, size, size);
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 14px monospace';
+    ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('COMPUSAFE', size/2, size/2);
   };
-  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=COMPUSAFE&margin=10`;
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${qrData}&margin=10`;
 }
 
 function downloadQR() {
