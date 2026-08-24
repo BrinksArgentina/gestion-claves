@@ -372,6 +372,19 @@
 
 <!-- TAB: INTENTOS -->
 <div id="tab-intentos" style="display:none" class="panel-full">
+
+  <!-- BLOQUEOS ACTIVOS -->
+  <div class="card" id="bloqueos-card" style="margin-bottom:16px;border:1.5px solid var(--danger,#e53e3e)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="card-title" style="margin-bottom:0;color:var(--danger,#e53e3e)">🔒 Cajas Bloqueadas</div>
+        <span id="bloqueos-count" style="background:#e53e3e;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px">0</span>
+      </div>
+      <button class="btn btn-secondary" style="font-size:12px;padding:7px 12px" onclick="loadBloqueos()">⟳ Actualizar</button>
+    </div>
+    <div id="bloqueos-container"><div style="color:var(--text3);font-size:13px">Sin bloqueos activos.</div></div>
+  </div>
+
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div class="card-title" style="margin-bottom:0">Intentos de acceso</div>
@@ -1225,6 +1238,7 @@ let intentos = [];
 let intentosTimer = null;
 
 async function loadIntentos() {
+  loadBloqueos();
   try {
     const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getIntentos');
     intentos = res.data || [];
@@ -1518,6 +1532,62 @@ checkScanMode().then(()=>{
   if(!window.location.search.includes('scan=')) initLogin();
 });
 startIntentosAutoRefresh();
+
+// ─── BLOQUEOS ─────────────────────────────────────────────────────────────────
+async function loadBloqueos() {
+  try {
+    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getBloqueos');
+    if (!res.ok) return;
+    renderBloqueos(res.data || []);
+  } catch(e) {}
+}
+
+function renderBloqueos(data) {
+  const activos = data.filter(r => !r.desbloqueado_en || r.desbloqueado_en === '');
+  const count = document.getElementById('bloqueos-count');
+  const container = document.getElementById('bloqueos-container');
+  const card = document.getElementById('bloqueos-card');
+
+  count.textContent = activos.length;
+  count.style.background = activos.length > 0 ? '#e53e3e' : '#0a8a5a';
+  card.style.borderColor = activos.length > 0 ? '#e53e3e' : 'var(--border)';
+
+  if (activos.length === 0) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px">Sin bloqueos activos. ✓</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      ${activos.map(r => `
+        <div style="background:var(--surface2);border:1px solid #e53e3e33;border-radius:10px;padding:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;color:var(--text)">${r.parid}</div>
+            <span style="background:#e53e3e22;color:#e53e3e;font-size:10px;font-weight:700;border-radius:6px;padding:2px 7px">🔒 BLOQUEADO</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Bloqueado: ${r.bloqueado_en}</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Intentos fallidos: ${r.intentos}</div>
+          <button class="btn btn-primary" style="width:100%;font-size:13px;padding:8px" onclick="desbloquear('${r.parid}')">🔓 Desbloquear</button>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+async function desbloquear(parid) {
+  if (!confirm(`¿Desbloquear la caja/equipo "${parid}"?`)) return;
+  try {
+    const payload = encodeURIComponent(JSON.stringify({ action:'desbloquear', parid }));
+    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=desbloquear&payload='+payload);
+    if (res.ok) {
+      showToast('🔓 ' + parid + ' desbloqueado', 'success');
+      loadBloqueos();
+    } else {
+      showToast('Error al desbloquear', 'error');
+    }
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+  }
+}
 
 // ─── HORARIO ─────────────────────────────────────────────────────────────────
 let diasSeleccionados = new Set(); // Set de strings 'dd/mm/yyyy'
