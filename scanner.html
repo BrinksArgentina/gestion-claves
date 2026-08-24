@@ -90,6 +90,15 @@
   </div>
 </div>
 
+<!-- PANTALLA BLOQUEADA -->
+<div id="screen-bloqueado" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:340px;text-align:center">
+  <div style="font-size:64px">🔒</div>
+  <div style="font-family:'Courier New',monospace;font-size:clamp(18px,6vw,30px);font-weight:900;color:#f75f5f">ACCESO BLOQUEADO</div>
+  <div style="color:#666;font-size:14px;max-width:280px;line-height:1.6">Se superaron los intentos permitidos.<br>Contactá al supervisor para desbloquear.</div>
+  <div id="bloqueado-parid" style="color:#444;font-size:12px;margin-top:8px;padding:8px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px"></div>
+  <button class="btn-volver" style="margin-top:20px" onclick="volverInicio()">← Volver</button>
+</div>
+
 <!-- PANTALLA FUERA DE HORARIO -->
 <div id="screen-fuera-horario" style="display:none;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:340px;text-align:center">
   <div class="fuera-horario-icon">🔴</div>
@@ -125,7 +134,7 @@ let scannerInterval = null;
 let currentScanId = null;
 
 function show(id) {
-  ['screen-inicio','screen-legajo','screen-resultado','screen-fuera-horario','screen-compusafe'].forEach(s => {
+  ['screen-inicio','screen-legajo','screen-resultado','screen-fuera-horario','screen-compusafe','screen-bloqueado'].forEach(s => {
     document.getElementById(s).style.display = s===id ? 'flex' : 'none';
     document.getElementById(s).style.flexDirection = 'column';
     document.getElementById(s).style.alignItems = 'center';
@@ -255,6 +264,11 @@ async function validar() {
     try {
       const payload = encodeURIComponent(JSON.stringify({action:'validarCompusafe', legajo}));
       const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validarCompusafe&payload='+payload);
+      if (res.bloqueado) {
+        document.getElementById('bloqueado-parid').textContent = 'Equipo: COMPUSAFE';
+        show('screen-bloqueado');
+        return;
+      }
       if (!res.ok || !res.autorizado) {
         show('screen-resultado');
         document.getElementById('resultado-content').innerHTML = `
@@ -276,6 +290,12 @@ async function validar() {
   try {
     const payload = encodeURIComponent(JSON.stringify({action:'validar', parid:currentScanId, legajo}));
     const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validar&payload='+payload);
+
+    if (res.bloqueado) {
+      document.getElementById('bloqueado-parid').textContent = 'Caja: ' + currentScanId;
+      show('screen-bloqueado');
+      return;
+    }
 
     if (!res.ok || !res.autorizado) {
       show('screen-resultado');
