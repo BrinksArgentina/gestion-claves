@@ -1,0 +1,27 @@
+{
+  "name": "BRINKS KEYS — Escáner",
+  "short_name": "BK Scanner",
+  "description": "Escáner QR para jefes de equipo de Brinks Argentina",
+  "start_url": "./scanner.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#1a6ef7",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "utilities"],
+  "screenshots": []
+}
