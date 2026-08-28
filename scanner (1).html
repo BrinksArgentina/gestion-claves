@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>BRINKS KEYS — Escáner</title>
+
+<!-- ─── PWA META TAGS ──────────────────────────────────────────────────────── -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a6ef7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BK Scanner">
+
+<!-- Ícono para iOS (Safari no lee el manifest) -->
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- Splash screens iOS (opcionales pero mejoran la experiencia) -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#000;color:#fff;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+  .logo{color:#4f8ef7;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;font-family:'Courier New',monospace;}
+  .title{font-size:20px;font-weight:700;margin-bottom:6px;text-align:center;}
+  .sub{color:#666;font-size:13px;margin-bottom:24px;text-align:center;}
+
+  /* SCANNER */
+  .scanner-wrap{position:relative;width:100%;max-width:320px;}
+  #scanner-video{width:100%;border-radius:14px;display:block;background:#111;}
+  .scanner-frame{position:absolute;inset:0;border-radius:14px;pointer-events:none;}
+  .corner{position:absolute;width:30px;height:30px;border-color:#4f8ef7;border-style:solid;}
+  .corner.tl{top:10px;left:10px;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
+  .corner.tr{top:10px;right:10px;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
+  .corner.bl{bottom:10px;left:10px;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
+  .corner.br{bottom:10px;right:10px;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
+  .scan-line{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,#4f8ef7,transparent);animation:scanline 2s linear infinite;}
+  @keyframes scanline{0%{top:12%}100%{top:88%}}
+
+  .status{color:#888;font-size:13px;margin-top:14px;text-align:center;min-height:20px;}
+  .btn-start{background:linear-gradient(135deg,#1a6ef7,#3b9eff);color:#fff;border:none;border-radius:14px;padding:14px 40px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:1px;box-shadow:0 6px 20px rgba(59,158,255,.4);margin-top:20px;}
+  .btn-cancel{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#aaa;border-radius:10px;padding:10px 28px;font-size:14px;cursor:pointer;margin-top:14px;}
+
+  /* LEGAJO */
+  .legajo-screen{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:320px;}
+  .legajo-title{font-size:18px;font-weight:700;text-align:center;}
+  .legajo-caja{color:#4f8ef7;font-family:'Courier New',monospace;font-size:14px;text-align:center;}
+  .legajo-input{width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);border-radius:12px;padding:14px;color:#fff;font-size:22px;text-align:center;letter-spacing:4px;outline:none;font-family:'Courier New',monospace;}
+  .legajo-input:focus{border-color:#4f8ef7;}
+  .legajo-btn{width:100%;background:linear-gradient(135deg,#1a6ef7,#3b9eff);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:1px;}
+  .legajo-loading{font-size:13px;color:#666;min-height:18px;text-align:center;}
+  .btn-volver{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#666;border-radius:8px;padding:8px 20px;font-size:13px;cursor:pointer;}
+
+  /* RESULTADO */
+  .resultado-screen{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:340px;text-align:center;}
+  .alarma-code{font-family:'Courier New',monospace;font-size:clamp(52px,16vw,100px);font-weight:900;letter-spacing:4px;line-height:1;color:#fff;word-break:break-all;}
+  .sin-alarma{font-family:'Courier New',monospace;font-size:clamp(26px,9vw,50px);font-weight:900;color:#f75f5f;}
+  .res-cliente{color:#888;font-size:16px;}
+  .res-novedad{background:#1a1a00;border:1px solid #444400;border-radius:10px;padding:14px 18px;max-width:320px;width:100%;}
+  .res-novedad-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#f7a24f;margin-bottom:6px;}
+  .res-novedad-text{color:#fff;font-size:15px;line-height:1.4;}
+  .res-jefe{color:#555;font-size:12px;margin-top:8px;}
+  .dot{width:8px;height:8px;background:#4f8ef7;border-radius:50%;margin:24px auto 0;}
+  .denied-code{font-size:clamp(28px,10vw,52px);font-weight:900;color:#f75f5f;font-family:'Courier New',monospace;}
+  .denied-msg{color:#666;font-size:14px;max-width:280px;}
+  .fuera-horario-icon{font-size:64px;margin-bottom:16px;}
+  .fuera-horario-title{font-size:clamp(20px,7vw,36px);font-weight:900;color:#f75f5f;text-align:center;font-family:'Courier New',monospace;}
+  .fuera-horario-msg{color:#666;font-size:14px;max-width:280px;text-align:center;line-height:1.6;}
+  .fuera-horario-horario{color:#444;font-size:13px;margin-top:12px;padding:10px 18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;text-align:center;}
+
+  /* BANNER INSTALACIÓN */
+  #install-banner{display:none;position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #222;padding:14px 20px;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;z-index:9999;}
+  #install-banner.visible{display:flex;}
+  .install-text{font-size:13px;color:#aaa;line-height:1.4;}
+  .install-text strong{color:#fff;display:block;font-size:14px;margin-bottom:2px;}
+  .btn-install{background:linear-gradient(135deg,#1a6ef7,#3b9eff);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .btn-install-close{background:none;border:none;color:#555;font-size:20px;cursor:pointer;padding:4px 8px;line-height:1;}
+</style>
+</head>
+<body>
+
+<div class="logo">🔐 BRINKS KEYS</div>
+
+<!-- PANTALLA INICIO -->
+<div id="screen-inicio">
+  <div class="title">Escáner de QR</div>
+  <div class="sub">Jefes de Equipo</div>
+  <div class="scanner-wrap" id="scanner-wrap" style="display:none">
+    <video id="scanner-video" autoplay playsinline muted></video>
+    <div class="scanner-frame">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div class="scan-line"></div>
+    </div>
+  </div>
+  <div class="status" id="scanner-status">Presioná el botón para escanear</div>
+  <button class="btn-start" id="btn-start" onclick="startScanner()">📷 Escanear QR</button>
+  <button class="btn-cancel" id="btn-cancel" style="display:none" onclick="stopScanner()">✕ Cancelar</button>
+</div>
+
+<!-- PANTALLA LEGAJO -->
+<div id="screen-legajo" style="display:none">
+  <div class="legajo-screen">
+    <div class="legajo-title">Ingresá tu legajo</div>
+    <div class="legajo-caja" id="legajo-caja-id"></div>
+    <input class="legajo-input" type="number" id="legajo-input" placeholder="000000000" autofocus>
+    <button class="legajo-btn" onclick="validar()">Validar ›</button>
+    <div class="legajo-loading" id="legajo-status"></div>
+    <button class="btn-volver" onclick="volverInicio()">← Volver</button>
+  </div>
+</div>
+
+<!-- PANTALLA BLOQUEADA -->
+<div id="screen-bloqueado" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:340px;text-align:center">
+  <div style="font-size:64px">🔒</div>
+  <div style="font-family:'Courier New',monospace;font-size:clamp(18px,6vw,30px);font-weight:900;color:#f75f5f">ACCESO BLOQUEADO</div>
+  <div style="color:#666;font-size:14px;max-width:280px;line-height:1.6">Se superaron los intentos permitidos.<br>Contactá al supervisor para desbloquear.</div>
+  <div id="bloqueado-parid" style="color:#444;font-size:12px;margin-top:8px;padding:8px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px"></div>
+  <button class="btn-volver" style="margin-top:20px" onclick="volverInicio()">← Volver</button>
+</div>
+
+<!-- PANTALLA FUERA DE HORARIO -->
+<div id="screen-fuera-horario" style="display:none;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:340px;text-align:center">
+  <div class="fuera-horario-icon">🔴</div>
+  <div class="fuera-horario-title">SISTEMA FUERA<br>DE HORARIO</div>
+  <div class="fuera-horario-msg">El acceso con QR no está habilitado en este momento.</div>
+  <div class="fuera-horario-horario" id="fuera-horario-info"></div>
+  <button class="btn-volver" style="margin-top:20px" onclick="volverInicio()">← Intentar de nuevo</button>
+</div>
+
+<!-- PANTALLA RESULTADO COMPUSAFE -->
+<div id="screen-compusafe" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:340px;text-align:center">
+  <div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">COMPUSAFE — CLAVE SEMANAL</div>
+  <div id="csf-alarma" style="font-family:'Courier New',monospace;font-size:clamp(64px,20vw,110px);font-weight:900;letter-spacing:4px;line-height:1;color:#fff"></div>
+  <div id="csf-semana-info" style="color:#555;font-size:13px"></div>
+  <div id="csf-jefe-info" style="color:#444;font-size:12px;margin-top:4px"></div>
+  <div class="dot"></div>
+  <button class="btn-volver" style="margin-top:16px" onclick="volverInicio()">← Escanear otra vez</button>
+</div>
+
+<!-- PANTALLA RESULTADO -->
+<div id="screen-resultado" style="display:none">
+  <div class="resultado-screen" id="resultado-content"></div>
+  <div class="dot"></div>
+  <button class="btn-volver" style="margin-top:24px" onclick="volverInicio()">← Escanear otra caja</button>
+</div>
+
+<!-- BANNER DE INSTALACIÓN (aparece automáticamente si el browser lo permite) -->
+<div id="install-banner">
+  <div class="install-text">
+    <strong>Instalar app</strong>
+    Agregala a tu pantalla de inicio para usarla más rápido
+  </div>
+  <button class="btn-install" id="btn-install-confirm">Instalar</button>
+  <button class="btn-install-close" onclick="cerrarBanner()">×</button>
+</div>
+
+<script>
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyiKB7k3EGA-_VQI5h4J2n9VduMsQk873EXEVsKYis0mDp_xPh62xofaMyGOCrcSf2K/exec';
+const TOKEN = 'clavesbrinks.2026';
+
+let scannerStream = null;
+let scannerInterval = null;
+let currentScanId = null;
+
+// ─── PANTALLAS ───────────────────────────────────────────────────────────────
+function show(id) {
+  ['screen-inicio','screen-legajo','screen-resultado','screen-fuera-horario','screen-compusafe','screen-bloqueado'].forEach(s => {
+    const el = document.getElementById(s);
+    el.style.display = s === id ? 'flex' : 'none';
+    el.style.flexDirection = 'column';
+    el.style.alignItems = 'center';
+  });
+}
+
+// ─── SCANNER ─────────────────────────────────────────────────────────────────
+async function startScanner() {
+  document.getElementById('scanner-wrap').style.display = 'block';
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-cancel').style.display = 'block';
+  document.getElementById('scanner-status').textContent = 'Iniciando cámara…';
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    const video = document.getElementById('scanner-video');
+    video.srcObject = scannerStream;
+    await video.play();
+    document.getElementById('scanner-status').textContent = 'Apuntá al código QR…';
+    startScanLoop(video);
+  } catch(err) {
+    document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara';
+  }
+}
+
+function startScanLoop(video) {
+  if ('BarcodeDetector' in window) {
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    scannerInterval = setInterval(async () => {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) { stopScanner(); handleQR(codes[0].rawValue); }
+        } catch(e) {}
+      }
+    }, 300);
+  } else {
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js').then(() => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      scannerInterval = setInterval(() => {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(img.data, img.width, img.height);
+          if (code) { stopScanner(); handleQR(code.data); }
+        }
+      }, 300);
+    });
+  }
+}
+
+function stopScanner() {
+  if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+  if (scannerStream) { scannerStream.getTracks().forEach(t=>t.stop()); scannerStream = null; }
+  document.getElementById('scanner-wrap').style.display = 'none';
+  document.getElementById('btn-start').style.display = 'block';
+  document.getElementById('btn-cancel').style.display = 'none';
+  document.getElementById('scanner-status').textContent = 'Presioná el botón para escanear';
+}
+
+async function handleQR(raw) {
+  let scanId = raw;
+  try { const u = new URL(raw); scanId = u.searchParams.get('scan') || raw; } catch(e) {}
+  currentScanId = decodeURIComponent(scanId).trim();
+
+  const dentroHorario = await checkHorario();
+  if (!dentroHorario) return;
+
+  if (currentScanId === 'COMPUSAFE') {
+    document.getElementById('legajo-caja-id').textContent = '🏦 Equipo Compusafe';
+  } else {
+    document.getElementById('legajo-caja-id').textContent = 'Caja: ' + currentScanId;
+  }
+  document.getElementById('legajo-input').value = '';
+  document.getElementById('legajo-status').textContent = '';
+  show('screen-legajo');
+  setTimeout(() => document.getElementById('legajo-input').focus(), 100);
+}
+
+async function checkHorario() {
+  try {
+    const payload = encodeURIComponent(JSON.stringify({action:'checkHorario'}));
+    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=checkHorario&payload='+payload);
+    if (res.ok && res.dentroHorario === false) {
+      const info = document.getElementById('fuera-horario-info');
+      info.textContent = 'Horario habilitado: ' + (res.inicio||'05:00') + ' – ' + (res.fin||'21:00');
+      show('screen-fuera-horario');
+      return false;
+    }
+    return true;
+  } catch(e) {
+    // Sin conexión → falla abierta para no bloquear operaciones
+    return true;
+  }
+}
+
+// ─── JSONP ───────────────────────────────────────────────────────────────────
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    window[cb] = (d) => { delete window[cb]; document.getElementById(cb)?.remove(); resolve(d); };
+    const s = document.createElement('script');
+    s.id = cb; s.onerror = () => reject(new Error('Error'));
+    s.src = url + '&callback=' + cb;
+    document.head.appendChild(s);
+  });
+}
+
+// ─── VALIDAR ─────────────────────────────────────────────────────────────────
+async function validar() {
+  const legajo = document.getElementById('legajo-input').value.trim();
+  if (!legajo) { document.getElementById('legajo-status').textContent = 'Ingresá tu legajo'; return; }
+  document.getElementById('legajo-status').textContent = 'Validando…';
+
+  // Flujo Compusafe
+  if (currentScanId === 'COMPUSAFE') {
+    try {
+      const payload = encodeURIComponent(JSON.stringify({action:'validarCompusafe', legajo}));
+      const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validarCompusafe&payload='+payload);
+      if (res.bloqueado) {
+        document.getElementById('bloqueado-parid').textContent = 'Equipo: COMPUSAFE';
+        show('screen-bloqueado');
+        return;
+      }
+      if (!res.ok || !res.autorizado) {
+        show('screen-resultado');
+        document.getElementById('resultado-content').innerHTML = `
+          <div class="denied-code">ACCESO DENEGADO</div>
+          <div class="denied-msg">Legajo no autorizado para hoy.</div>
+        `;
+        return;
+      }
+      document.getElementById('csf-alarma').textContent = res.clave || '—';
+      document.getElementById('csf-semana-info').textContent = (res.semana || '') + '  |  Sobre N° ' + (res.n_sobre || '');
+      document.getElementById('csf-jefe-info').textContent = res.jefe ? '👤 ' + res.jefe : '';
+      show('screen-compusafe');
+    } catch(e) {
+      document.getElementById('legajo-status').textContent = 'Error de conexión. Reintentá.';
+    }
+    return;
+  }
+
+  // Flujo caja normal
+  try {
+    const payload = encodeURIComponent(JSON.stringify({action:'validar', parid:currentScanId, legajo}));
+    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validar&payload='+payload);
+
+    if (res.bloqueado) {
+      document.getElementById('bloqueado-parid').textContent = 'Caja: ' + currentScanId;
+      show('screen-bloqueado');
+      return;
+    }
+
+    if (!res.ok || !res.autorizado) {
+      show('screen-resultado');
+      document.getElementById('resultado-content').innerHTML = `
+        <div class="denied-code">ACCESO DENEGADO</div>
+        <div class="denied-msg">Legajo no autorizado para esta caja hoy.</div>
+        <div style="color:#333;font-size:12px;margin-top:8px">Caja: ${currentScanId}</div>
+      `;
+      return;
+    }
+
+    const caja = res.caja || {};
+    const alarmaHtml = caja.alarma
+      ? `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">CÓDIGO DE ALARMA</div><div class="alarma-code">${caja.alarma}</div>`
+      : `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">ALARMA</div><div class="sin-alarma">SIN ALARMA</div>`;
+    const novedadHtml = caja.novedad
+      ? `<div class="res-novedad"><div class="res-novedad-label">⚠ Novedad</div><div class="res-novedad-text">${caja.novedad}</div></div>`
+      : '';
+
+    show('screen-resultado');
+    document.getElementById('resultado-content').innerHTML = `
+      ${alarmaHtml}
+      <div class="res-cliente">${caja.cliente||currentScanId}</div>
+      ${novedadHtml}
+      ${res.jefe ? `<div class="res-jefe">👤 ${res.jefe}</div>` : ''}
+    `;
+  } catch(e) {
+    document.getElementById('legajo-status').textContent = 'Error de conexión. Reintentá.';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('screen-legajo').style.display !== 'none') validar();
+});
+
+function volverInicio() {
+  show('screen-inicio');
+  document.getElementById('screen-inicio').style.display = 'flex';
+}
+
+function loadScript(src) {
+  return new Promise((res,rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ─── SERVICE WORKER ───────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registrado:', reg.scope))
+      .catch(err => console.warn('SW falló:', err));
+  });
+}
+
+// ─── BANNER DE INSTALACIÓN ────────────────────────────────────────────────────
+// El evento beforeinstallprompt solo se dispara en Chrome/Android cuando
+// el browser detecta que la app es instalable (HTTPS + manifest + SW).
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Mostrar banner personalizado
+  document.getElementById('install-banner').classList.add('visible');
+});
+
+document.getElementById('btn-install-confirm').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  cerrarBanner();
+  if (outcome === 'accepted') {
+    console.log('PWA instalada');
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  cerrarBanner();
+  deferredPrompt = null;
+});
+
+function cerrarBanner() {
+  document.getElementById('install-banner').classList.remove('visible');
+}
+
+// ─── INICIO ───────────────────────────────────────────────────────────────────
+window.onload = () => {
+  const params = new URLSearchParams(window.location.search);
+  const scan = params.get('scan');
+  if (scan) handleQR(scan);
+  else show('screen-inicio');
+};
+</script>
+</body>
+</html>
