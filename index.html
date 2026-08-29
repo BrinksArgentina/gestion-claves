@@ -389,7 +389,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div class="card-title" style="margin-bottom:0">Intentos de acceso</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span id="intentos-live" style="font-size:11px;color:var(--success)">● Auto-refresh 30s</span>
+        <span id="intentos-live" style="font-size:11px;color:var(--success)">● Auto-refresh 5s</span>
         <input class="search-box" type="text" id="intentos-search" placeholder="Buscar ParID, legajo, jefe…" oninput="renderIntentos()" style="max-width:200px">
         <input class="search-box" type="date" id="intentos-fecha" onchange="renderIntentos()" style="max-width:150px">
         <button class="btn btn-secondary" style="font-size:12px;padding:7px 10px" onclick="document.getElementById('intentos-fecha').value='';renderIntentos()">✕ Fecha</button>
@@ -681,7 +681,7 @@ function switchTab(tab) {
     el.classList.toggle('active', ['claves','programacion','legajos','historial','intentos','horario','compusafe'][i]===tab);
   });
   if(tab==='historial' && historial.length===0) loadHistorial();
-  if(tab==='intentos') loadIntentos();
+  if(tab==='intentos') { loadIntentos(); startIntentosAutoRefresh(); }
   if(tab==='horario') loadHorario();
   if(tab==='compusafe') loadCompusafe();
 }
@@ -1371,8 +1371,8 @@ function renderIntentos() {
 function startIntentosAutoRefresh() {
   if (intentosTimer) clearInterval(intentosTimer);
   intentosTimer = setInterval(() => {
-    if (activeTab === 'programacion') loadIntentos();
-  }, 30000);
+    if (activeTab === 'intentos') loadIntentos();
+  }, 5000);
 }
 
 // ─── HISTORIAL ───────────────────────────────────────────────────────────────
