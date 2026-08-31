@@ -523,13 +523,6 @@
     <button class="btn btn-secondary" onclick="loadCompusafe()">⟳ Recargar</button>
   </div>
 
-  <div class="card" style="margin-top:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div class="card-title" style="margin-bottom:0">📅 Programación Compusafe — Hoy</div>
-      <span style="font-size:12px;color:var(--text3)" id="csf-prog-count"></span>
-    </div>
-    <div id="csf-prog-container"><div style="color:var(--text3);font-size:13px">Procesá la programación diaria para ver los datos.</div></div>
-  </div>
 </div>
 
 <!-- MODAL EDITAR CLAVE COMPUSAFE -->
@@ -691,7 +684,7 @@ function switchTab(tab) {
   if(tab==='historial' && historial.length===0) loadHistorial();
   if(tab==='intentos') { loadIntentos(); startIntentosAutoRefresh(); }
   if(tab==='horario') loadHorario();
-  if(tab==='compusafe') { loadCompusafe(); renderCompusafeProg(); }
+  if(tab==='compusafe') loadCompusafe();
 }
 
 // ─── LIST ────────────────────────────────────────────────────────────────────
@@ -1003,7 +996,6 @@ async function procesarProgramacion() {
       programacion = rowsTotal;
       updateStats();
       renderProgTable();
-      renderCompusafeProg();
       renderList();
       if(selectedId) renderDetail();
       document.getElementById('prog-status').textContent = `✓ ${rows.length} Brinks + ${rowsCompusafe.length} Compusafe`;
