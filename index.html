@@ -522,6 +522,14 @@
 
     <button class="btn btn-secondary" onclick="loadCompusafe()">⟳ Recargar</button>
   </div>
+
+  <div class="card" style="margin-top:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="card-title" style="margin-bottom:0">📅 Programación Compusafe — Hoy</div>
+      <span style="font-size:12px;color:var(--text3)" id="csf-prog-count"></span>
+    </div>
+    <div id="csf-prog-container"><div style="color:var(--text3);font-size:13px">Procesá la programación diaria para ver los datos.</div></div>
+  </div>
 </div>
 
 <!-- MODAL EDITAR CLAVE COMPUSAFE -->
@@ -608,7 +616,7 @@ const GITHUB_URL = window.location.origin + window.location.pathname;
 let db = [], legajos = [], programacion = [], historial = [];
 let activeFilter = 'todos';
 let selectedId = null, novedadTarget = null;
-let diarioData = null, reporteData = null;
+let diarioData = null, reporteData = null, compusafeProgData = [];
 let activeTab = 'claves';
 
 function now() {
@@ -683,7 +691,7 @@ function switchTab(tab) {
   if(tab==='historial' && historial.length===0) loadHistorial();
   if(tab==='intentos') { loadIntentos(); startIntentosAutoRefresh(); }
   if(tab==='horario') loadHorario();
-  if(tab==='compusafe') loadCompusafe();
+  if(tab==='compusafe') { loadCompusafe(); renderCompusafeProg(); }
 }
 
 // ─── LIST ────────────────────────────────────────────────────────────────────
@@ -852,7 +860,23 @@ function handleDiario(input) {
         if(parid && rutid && !map[parid]) map[parid]={parid,rutid,fecha,parada};
       });
       diarioData = Object.values(map);
-      document.getElementById('diario-result').innerHTML=`<div class="import-result ok">✓ ${diarioData.length} registros únicos leídos</div>`;
+
+      // Extraer Compusafe: P400-, P400 , L110-, MB-
+      const nombreCol = headers.indexOf('NombreParada');
+      const compuMap = {};
+      rows.slice(hIdx+1).forEach(r=>{
+        const parid = r[paridCol]?String(r[paridCol]).trim():'';
+        const rutid = r[rutidCol]?String(r[rutidCol]).trim():'';
+        const nombre = nombreCol>=0 && r[nombreCol]?String(r[nombreCol]).trim():'';
+        const parada = paradaCol>=0 && r[paradaCol]?String(r[paradaCol]).trim():'';
+        const esCompusafe = nombre.includes('P400-')||nombre.includes('P400 ')||nombre.includes('L110-')||nombre.includes('MB-');
+        if(parid && rutid && !compuMap[parid] && esCompusafe){
+          compuMap[parid]={parid,rutid,parada,nombre};
+        }
+      });
+      compusafeProgData = Object.values(compuMap);
+
+      document.getElementById('diario-result').innerHTML=`<div class="import-result ok">✓ ${diarioData.length} registros leídos (${compusafeProgData.length} Compusafe)</div>`;
       checkProcesar();
     } catch(err){
       document.getElementById('diario-result').innerHTML=`<div class="import-result err">Error: ${err.message}</div>`;
@@ -926,12 +950,35 @@ async function procesarProgramacion() {
       return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe, parada:d.parada||'' };
     }).filter(r=>r.jefe);
 
-  document.getElementById('prog-status').textContent = `Procesando ${rows.length} registros…`;
+  // Agregar Compusafe a la programacion
+  // IDs ya en Brinks — no duplicar
+  const brinkIds = new Set(rows.map(r=>r.parid.trim()));
+  const rowsCompusafe = compusafeProgData
+    .filter(c => !brinkIds.has(c.parid.trim()))
+    .map(c => {
+      const rutid = c.rutid;
+      const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
+      const legObj = jefe ? legajos.find(l => matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||'')) : null;
+      const legajo_jefe = legObj ? String(legObj.legajo||legObj['Legajo']||'') : '';
+      return { parid:c.parid, rutid, fecha:c.fecha||'', jefe, legajo_jefe, parada:c.parada||'' };
+    }).filter(r=>r.jefe && r.legajo_jefe);
+
+  const rowsTotal = [...rows, ...rowsCompusafe];
+
+  document.getElementById('prog-status').textContent = `Procesando ${rowsTotal.length} registros…`;
   try {
-    // 1. Guardar programacion (cajas del sistema) — payload pequeño
+    // 1. Guardar Brinks primero
     const payload = encodeURIComponent(JSON.stringify({action:'saveProgramacion', rows}));
     const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveProgramacion&payload='+payload);
     if(res.ok){
+    // 2. Agregar Compusafe en tandas de 20
+    if(rowsCompusafe.length > 0){
+      for(let i=0; i<rowsCompusafe.length; i+=20){
+        const tanda = rowsCompusafe.slice(i, i+20);
+        const p = encodeURIComponent(JSON.stringify({action:'appendProgramacion', rows:tanda}));
+        await jsonp(SHEET_URL+'?token='+TOKEN+'&action=appendProgramacion&payload='+p);
+      }
+    }
 
     // 2. Guardar recorridos por separado — todos los JE del día para Compusafe
     const recorridos = Object.entries(reporteData).map(([ruta, jefe]) => {
@@ -943,7 +990,7 @@ async function procesarProgramacion() {
       const payload2 = encodeURIComponent(JSON.stringify({action:'saveRecorridos', rows: recorridos}));
       await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveRecorridos&payload='+payload2);
     }
-      programacion = rows;
+      // programacion ya asignado arriba
       // Actualizar updatedAt de las cajas programadas hoy
       const progIds = new Set(rows.map(r=>r.parid.trim()));
       const fechaHoy = now();
@@ -953,12 +1000,14 @@ async function procesarProgramacion() {
       // Guardar en Sheets
       const payloadCajas = encodeURIComponent(JSON.stringify({action:'save',rows:db}));
       await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payloadCajas);
+      programacion = rowsTotal;
       updateStats();
       renderProgTable();
+      renderCompusafeProg();
       renderList();
       if(selectedId) renderDetail();
-      document.getElementById('prog-status').textContent = `✓ ${rows.length} registros cargados`;
-      toast(`Programación: ${rows.length} registros`,'success');
+      document.getElementById('prog-status').textContent = `✓ ${rows.length} Brinks + ${rowsCompusafe.length} Compusafe`;
+      toast(`Programación: ${rowsTotal.length} registros`,'success');
     }
   } catch(e){
     document.getElementById('prog-status').textContent = 'Error al guardar';
@@ -1794,6 +1843,42 @@ function getLunesActual() {
   const lunes = new Date(now);
   lunes.setDate(now.getDate() + diff);
   return lunes.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function renderCompusafeProg() {
+  const el = document.getElementById('csf-prog-container');
+  const countEl = document.getElementById('csf-prog-count');
+  if (!el) return;
+  if (!compusafeProgData.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px">Sin datos. Procesá la programación primero.</div>';
+    if(countEl) countEl.textContent = '';
+    return;
+  }
+  const rows = compusafeProgData.map(c => {
+    const jefe = reporteData ? (reporteData[c.rutid] || reporteData[String(parseInt(c.rutid,10))] || '—') : '—';
+    const legObj = jefe !== '—' ? legajos.find(l => matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||'')) : null;
+    const legajo = legObj ? String(legObj.legajo||legObj['Legajo']||'') : '—';
+    return { ...c, jefe, legajo };
+  }).filter(r => r.jefe !== '—');
+
+  if(countEl) countEl.textContent = `${rows.length} paradas hoy`;
+
+  if (!rows.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px">Sin Compusafe programados hoy.</div>';
+    return;
+  }
+  el.innerHTML = `<table class="prog-table">
+    <thead><tr><th>ParID</th><th>RutaID</th><th>Parada</th><th>Cliente</th><th>Jefe de Equipo</th><th>Legajo</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td><span class="prog-id">${r.parid}</span></td>
+      <td>${r.rutid}</td>
+      <td style="color:var(--text2)">${r.parada||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${r.nombre||'—'}</td>
+      <td>${r.jefe}</td>
+      <td style="font-family:var(--mono);font-size:12px">${r.legajo}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
 async function loadCompusafe() {
