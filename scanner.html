@@ -306,8 +306,8 @@ async function validar() {
         `;
         return;
       }
-      document.getElementById('csf-alarma').textContent = res.clave || '—';
-      document.getElementById('csf-semana-info').textContent = (res.semana || '') + '  |  Sobre N° ' + (res.n_sobre || '');
+      document.getElementById('csf-alarma').textContent = res.claveActiva || res.clave || '—';
+      document.getElementById('csf-semana-info').textContent = (res.semanaActiva || res.semana || '') + '  |  Sobre N° ' + (res.nSobre || res.n_sobre || '');
       document.getElementById('csf-jefe-info').textContent = res.jefe ? '👤 ' + res.jefe : '';
       show('screen-compusafe');
     } catch(e) {
