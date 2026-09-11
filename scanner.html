@@ -159,12 +159,38 @@
 </div>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyiKB7k3EGA-_VQI5h4J2n9VduMsQk873EXEVsKYis0mDp_xPh62xofaMyGOCrcSf2K/exec';
-const TOKEN = 'clavesbrinks.2026';
+const API_URL = 'https://brinkskeyarg-production.up.railway.app';
 
 let scannerStream = null;
 let scannerInterval = null;
 let currentScanId = null;
+let jefeToken = null;
+let jefeNombre = null;
+
+// ─── LOGIN JEFE ───────────────────────────────────────────────────────────────
+function mostrarLoginJefe(cajaId) {
+  currentScanId = cajaId;
+  document.getElementById('legajo-caja-id').textContent =
+    cajaId === 'COMPUSAFE' ? '🏦 Equipo Compusafe' : 'Caja: ' + cajaId;
+  document.getElementById('legajo-input').value = '';
+
+  // Agregar campo PIN si no existe
+  if (!document.getElementById('pin-input')) {
+    const legajoInput = document.getElementById('legajo-input');
+    const pinInput = document.createElement('input');
+    pinInput.className = 'legajo-input';
+    pinInput.type = 'password';
+    pinInput.id = 'pin-input';
+    pinInput.placeholder = 'PIN personal';
+    pinInput.style.marginTop = '8px';
+    legajoInput.parentNode.insertBefore(pinInput, legajoInput.nextSibling);
+  }
+  // BUG 11 FIX: limpiar también el PIN al mostrar la pantalla
+  document.getElementById('pin-input').value = '';
+  document.getElementById('legajo-status').textContent = '';
+  show('screen-legajo');
+  setTimeout(() => document.getElementById('legajo-input').focus(), 100);
+}
 
 // ─── PANTALLAS ───────────────────────────────────────────────────────────────
 function show(id) {
@@ -237,120 +263,166 @@ function stopScanner() {
 async function handleQR(raw) {
   let scanId = raw;
   try { const u = new URL(raw); scanId = u.searchParams.get('scan') || raw; } catch(e) {}
-  currentScanId = decodeURIComponent(scanId).trim();
+  scanId = decodeURIComponent(scanId).trim();
 
   const dentroHorario = await checkHorario();
   if (!dentroHorario) return;
 
-  if (currentScanId === 'COMPUSAFE') {
-    document.getElementById('legajo-caja-id').textContent = '🏦 Equipo Compusafe';
-  } else {
-    document.getElementById('legajo-caja-id').textContent = 'Caja: ' + currentScanId;
-  }
-  document.getElementById('legajo-input').value = '';
-  document.getElementById('legajo-status').textContent = '';
-  show('screen-legajo');
-  setTimeout(() => document.getElementById('legajo-input').focus(), 100);
+  mostrarLoginJefe(scanId);
 }
 
 async function checkHorario() {
   try {
-    const payload = encodeURIComponent(JSON.stringify({action:'checkHorario'}));
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=checkHorario&payload='+payload);
-    if (res.ok && res.dentroHorario === false) {
-      const info = document.getElementById('fuera-horario-info');
-      info.textContent = 'Horario habilitado: ' + (res.inicio||'05:00') + ' – ' + (res.fin||'21:00');
-      show('screen-fuera-horario');
-      return false;
+    // BUG 12 FIX: timeout de 5s para no bloquear indefinidamente si Railway está caído
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(API_URL + '/api/horario', {
+      headers: jefeToken ? { 'Authorization': 'Bearer ' + jefeToken } : {},
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const data = await res.json();
+    if (data.ok && data.horario) {
+      const h = data.horario;
+      const ahora = new Date();
+      const actual = ahora.getHours() * 60 + ahora.getMinutes();
+      const [hIni, mIni] = (h.hora_inicio||'06:00').split(':').map(Number);
+      const [hFin, mFin] = (h.hora_fin||'20:00').split(':').map(Number);
+      const inicio = hIni * 60 + mIni;
+      const fin = hFin * 60 + mFin;
+      if (actual < inicio || actual > fin) {
+        document.getElementById('fuera-horario-info').textContent =
+          'Horario habilitado: ' + h.hora_inicio + ' – ' + h.hora_fin;
+        show('screen-fuera-horario');
+        return false;
+      }
     }
     return true;
   } catch(e) {
-    // Sin conexión → falla abierta para no bloquear operaciones
+    // BUG 12 FIX: si el servidor no responde (Railway free tier caído), permitir
+    // acceso con advertencia en lugar de bloquear completamente.
+    // La validación real del legajo/PIN igual falla si no hay conexión.
+    console.warn('checkHorario: sin conexión, permitiendo acceso con advertencia', e);
     return true;
   }
-}
-
-// ─── JSONP ───────────────────────────────────────────────────────────────────
-function jsonp(url) {
-  return new Promise((resolve, reject) => {
-    const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-    window[cb] = (d) => { delete window[cb]; document.getElementById(cb)?.remove(); resolve(d); };
-    const s = document.createElement('script');
-    s.id = cb; s.onerror = () => reject(new Error('Error'));
-    s.src = url + '&callback=' + cb;
-    document.head.appendChild(s);
-  });
 }
 
 // ─── VALIDAR ─────────────────────────────────────────────────────────────────
 async function validar() {
   const legajo = document.getElementById('legajo-input').value.trim();
+  const pin    = document.getElementById('pin-input')?.value.trim();
   if (!legajo) { document.getElementById('legajo-status').textContent = 'Ingresá tu legajo'; return; }
+  if (!pin)    { document.getElementById('legajo-status').textContent = 'Ingresá tu PIN'; return; }
   document.getElementById('legajo-status').textContent = 'Validando…';
 
-  // Flujo Compusafe
-  if (currentScanId === 'COMPUSAFE') {
-    try {
-      const payload = encodeURIComponent(JSON.stringify({action:'validarCompusafe', legajo}));
-      const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validarCompusafe&payload='+payload);
-      if (res.bloqueado) {
-        document.getElementById('bloqueado-parid').textContent = 'Equipo: COMPUSAFE';
-        show('screen-bloqueado');
-        return;
-      }
-      if (!res.ok || !res.autorizado) {
-        show('screen-resultado');
-        document.getElementById('resultado-content').innerHTML = `
-          <div class="denied-code">ACCESO DENEGADO</div>
-          <div class="denied-msg">Legajo no autorizado para hoy.</div>
-        `;
-        return;
-      }
-      document.getElementById('csf-alarma').textContent = res.claveActiva || res.clave || '—';
-      document.getElementById('csf-semana-info').textContent = (res.semanaActiva || res.semana || '') + '  |  Sobre N° ' + (res.nSobre || res.n_sobre || '');
-      document.getElementById('csf-jefe-info').textContent = res.jefe ? '👤 ' + res.jefe : '';
-      show('screen-compusafe');
-    } catch(e) {
-      document.getElementById('legajo-status').textContent = 'Error de conexión. Reintentá.';
+  // Paso 1: obtener JWT del jefe
+  try {
+    const loginRes = await fetch(API_URL + '/api/auth/login-jefe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legajo, pin })
+    });
+    const loginData = await loginRes.json();
+    if (!loginData.ok || !loginData.token) {
+      document.getElementById('legajo-status').textContent = loginData.error || 'Legajo o PIN incorrecto';
+      return;
     }
+    jefeToken   = loginData.token;
+    jefeNombre  = loginData.nombre;
+  } catch(e) {
+    document.getElementById('legajo-status').textContent = 'Sin conexión. Contactá al supervisor.';
     return;
   }
 
-  // Flujo caja normal
+  // Paso 2: validar acceso a la caja
   try {
-    const payload = encodeURIComponent(JSON.stringify({action:'validar', parid:currentScanId, legajo}));
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=validar&payload='+payload);
+    const endpoint = currentScanId === 'COMPUSAFE'
+      ? '/api/compusafe/validar'
+      : '/api/validar';
 
-    if (res.bloqueado) {
-      document.getElementById('bloqueado-parid').textContent = 'Caja: ' + currentScanId;
+    const body = currentScanId === 'COMPUSAFE'
+      ? {}
+      : { parid: currentScanId };
+
+    const res = await fetch(API_URL + endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + jefeToken
+      },
+      body: JSON.stringify(body)
+    });
+
+    // BUG 10 FIX: distinguir error de autenticación vs otros errores
+    if (res.status === 401) {
+      document.getElementById('legajo-status').textContent = 'Sesión inválida. Reintentá.';
+      jefeToken = null;
+      return;
+    }
+
+    const data = await res.json();
+
+    // Bloqueado
+    if (data.bloqueado) {
+      document.getElementById('bloqueado-parid').textContent =
+        currentScanId === 'COMPUSAFE' ? 'Equipo: COMPUSAFE' : 'Caja: ' + currentScanId;
       show('screen-bloqueado');
       return;
     }
 
-    if (!res.ok || !res.autorizado) {
+    // Fuera de horario
+    if (data.motivo === 'fuera_horario') {
+      document.getElementById('fuera-horario-info').textContent =
+        'Horario habilitado: ' + (data.inicio||'06:00') + ' – ' + (data.fin||'20:00');
+      show('screen-fuera-horario');
+      return;
+    }
+
+    // Denegado
+    if (!data.ok || !data.autorizado) {
       show('screen-resultado');
       document.getElementById('resultado-content').innerHTML = `
         <div class="denied-code">ACCESO DENEGADO</div>
-        <div class="denied-msg">Legajo no autorizado para esta caja hoy.</div>
+        <div class="denied-msg">${
+          data.motivo === 'no_programado'
+            ? 'No estás programado para esta caja hoy.'
+            : 'Acceso no autorizado.'
+        }</div>
         <div style="color:#333;font-size:12px;margin-top:8px">Caja: ${currentScanId}</div>
       `;
       return;
     }
 
-    const caja = res.caja || {};
+    // ── COMPUSAFE autorizado ──
+    if (currentScanId === 'COMPUSAFE') {
+      document.getElementById('csf-alarma').textContent = data.claveActiva || '—';
+      document.getElementById('csf-semana-info').textContent =
+        (data.semana||'') + (data.nSobre ? '  |  Sobre N° ' + data.nSobre : '');
+      document.getElementById('csf-jefe-info').textContent = jefeNombre ? '👤 ' + jefeNombre : '';
+      show('screen-compusafe');
+      return;
+    }
+
+    // ── Caja normal autorizada ──
+    const caja = data.caja || {};
     const alarmaHtml = caja.alarma
-      ? `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">CÓDIGO DE ALARMA</div><div class="alarma-code">${caja.alarma}</div>`
-      : `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">ALARMA</div><div class="sin-alarma">SIN ALARMA</div>`;
+      ? `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">CÓDIGO DE ALARMA</div>
+         <div class="alarma-code">${caja.alarma}</div>`
+      : `<div style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase">ALARMA</div>
+         <div class="sin-alarma">SIN ALARMA</div>`;
     const novedadHtml = caja.novedad
-      ? `<div class="res-novedad"><div class="res-novedad-label">⚠ Novedad</div><div class="res-novedad-text">${caja.novedad}</div></div>`
+      ? `<div class="res-novedad">
+           <div class="res-novedad-label">⚠ Novedad</div>
+           <div class="res-novedad-text">${caja.novedad}</div>
+         </div>`
       : '';
 
     show('screen-resultado');
     document.getElementById('resultado-content').innerHTML = `
       ${alarmaHtml}
-      <div class="res-cliente">${caja.cliente||currentScanId}</div>
+      <div class="res-cliente">${caja.cliente || currentScanId}</div>
       ${novedadHtml}
-      ${res.jefe ? `<div class="res-jefe">👤 ${res.jefe}</div>` : ''}
+      ${jefeNombre ? `<div class="res-jefe">👤 ${jefeNombre}</div>` : ''}
     `;
   } catch(e) {
     document.getElementById('legajo-status').textContent = 'Error de conexión. Reintentá.';
