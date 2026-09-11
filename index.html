@@ -602,30 +602,41 @@
 </div>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyiKB7k3EGA-_VQI5h4J2n9VduMsQk873EXEVsKYis0mDp_xPh62xofaMyGOCrcSf2K/exec';
-const TOKEN = 'clavesbrinks.2026';
-const GITHUB_URL = window.location.origin + window.location.pathname;
+const API_URL = 'https://brinkskeyarg-production.up.railway.app';
 
 let db = [], legajos = [], programacion = [], historial = [];
 let activeFilter = 'todos';
 let selectedId = null, novedadTarget = null;
 let diarioData = null, reporteData = null, compusafeProgData = [];
 let activeTab = 'claves';
+let adminToken = null;
 
 function now() {
   return new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
 
-// ─── JSONP ────────────────────────────────────────────────────────────────────
-function jsonp(url) {
-  return new Promise((resolve, reject) => {
-    const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-    window[cb] = (d) => { delete window[cb]; document.getElementById(cb)?.remove(); resolve(d); };
-    const s = document.createElement('script');
-    s.id = cb; s.onerror = () => reject(new Error('JSONP error'));
-    s.src = url + '&callback=' + cb;
-    document.head.appendChild(s);
-  });
+// ─── API HELPER ───────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(adminToken ? { 'Authorization': 'Bearer ' + adminToken } : {})
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_URL + path, opts);
+  // BUG 7 FIX: verificar status HTTP antes de parsear JSON
+  if (res.status === 401) {
+    // Token expirado — limpiar sesión y redirigir a login
+    adminToken = null;
+    localStorage.removeItem('admin_token');
+    document.getElementById('login-overlay').style.display = 'flex';
+    throw new Error('Sesión expirada. Ingresá de nuevo.');
+  }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  return data;
 }
 
 // ─── SYNC STATUS ──────────────────────────────────────────────────────────────
@@ -640,19 +651,26 @@ function setSyncStatus(state) {
 async function loadAll() {
   setSyncStatus('loading');
   try {
+    const hoy = new Date().toISOString().slice(0,10);
     const [r1, r2, r3] = await Promise.all([
-      jsonp(SHEET_URL + '?token='+TOKEN+'&action=getAll'),
-      jsonp(SHEET_URL + '?token='+TOKEN+'&action=getLegajos'),
-      jsonp(SHEET_URL + '?token='+TOKEN+'&action=getProgramacion')
+      api('GET', '/api/cajas'),
+      api('GET', '/api/legajos'),
+      api('GET', '/api/programacion?fecha=' + hoy)
     ]);
-    db = (r1.data||[]).map(r=>({
-      id:String(r.id||'').trim(), cliente:String(r.cliente||'').trim(),
-      llavero:String(r.llavero||'').trim(), alarma:String(r.alarma||'').trim(),
-      transporte:String(r.transporte||'').trim(), novedad:String(r.novedad||'').trim(),
-      updatedAt:String(r.updatedAt||'').trim()
+    db = (r1.cajas||[]).map(r=>({
+      id: String(r.parid||'').trim(),
+      cliente: String(r.cliente||'').trim(),
+      llavero: String(r.direccion||'').trim(),
+      alarma: String(r.alarma||'').trim(),
+      transporte: '',
+      novedad: String(r.novedad||'').trim(),
+      updatedAt: r.actualizado_en||''
     }));
-    legajos = r2.data||[];
-    programacion = r3.data||[];
+    legajos = r2.legajos||[];
+    programacion = (r3.programacion||[]).map(p=>({
+      parid: p.parid, legajo: p.legajo, fecha: p.fecha,
+      nombre: p.nombre_jefe, cliente: p.cliente
+    }));
     setSyncStatus('ok');
     updateStats(); renderList(); renderProgTable(); renderLegajosTable();
     if(selectedId) renderDetail();
@@ -961,38 +979,8 @@ async function procesarProgramacion() {
   document.getElementById('prog-status').textContent = `Procesando ${rowsTotal.length} registros…`;
   try {
     // 1. Guardar Brinks primero
-    const payload = encodeURIComponent(JSON.stringify({action:'saveProgramacion', rows}));
-    const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveProgramacion&payload='+payload);
+    const res = await api('POST', '/api/programacion/bulk', { items: rowsTotal });
     if(res.ok){
-    // 2. Agregar Compusafe en tandas de 20
-    if(rowsCompusafe.length > 0){
-      for(let i=0; i<rowsCompusafe.length; i+=20){
-        const tanda = rowsCompusafe.slice(i, i+20);
-        const p = encodeURIComponent(JSON.stringify({action:'appendProgramacion', rows:tanda}));
-        await jsonp(SHEET_URL+'?token='+TOKEN+'&action=appendProgramacion&payload='+p);
-      }
-    }
-
-    // 2. Guardar recorridos por separado — todos los JE del día para Compusafe
-    const recorridos = Object.entries(reporteData).map(([ruta, jefe]) => {
-      const legObj = legajos.find(l => matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||''));
-      const legajo = legObj ? String(legObj.legajo||legObj['Legajo']||'') : '';
-      return { ruta, jefe, legajo };
-    }).filter(r => r.jefe);
-    if (recorridos.length > 0) {
-      const payload2 = encodeURIComponent(JSON.stringify({action:'saveRecorridos', rows: recorridos}));
-      await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveRecorridos&payload='+payload2);
-    }
-      // programacion ya asignado arriba
-      // Actualizar updatedAt de las cajas programadas hoy
-      const progIds = new Set(rows.map(r=>r.parid.trim()));
-      const fechaHoy = now();
-      db.forEach(caja => {
-        if(progIds.has(caja.id.trim())) caja.updatedAt = fechaHoy;
-      });
-      // Guardar en Sheets
-      const payloadCajas = encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-      await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payloadCajas);
       programacion = rowsTotal;
       updateStats();
       renderProgTable();
@@ -1026,8 +1014,7 @@ async function importLegajos(input) {
         nombre:String(r[nomCol]).trim(),
         legajo:String(r[legCol]||'').trim()
       }));
-      const payload = encodeURIComponent(JSON.stringify({action:'saveLegajos',rows:data}));
-      const res = await jsonp(SHEET_URL+'?token='+TOKEN+'&action=saveLegajos&payload='+payload);
+      const res = await api('POST', '/api/legajos/bulk', { legajos: data });
       if(res.ok){
         legajos = data;
         renderLegajosTable();
@@ -1069,8 +1056,15 @@ function importExcel(input) {
         else{db.push(reg);nuevos++;}
       });
       setSyncStatus('loading');
-      const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-      await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
+      // Subir cajas nuevas al backend
+      for (const caja of db) {
+        try {
+          await api('PUT', '/api/cajas/'+caja.id, {
+            cliente: caja.cliente, direccion: caja.llavero,
+            alarma: caja.alarma, novedad: caja.novedad
+          });
+        } catch(e) {}
+      }
       setSyncStatus('ok');
       updateStats();renderList();
       toast(`✓ ${nuevos} nuevos, ${actualizados} actualizados`,'success');
@@ -1091,14 +1085,22 @@ function openNovedadModal(id) {
 async function saveNovedad() {
   const r=db.find(x=>x.id===novedadTarget);
   const novedad=document.getElementById('edit-novedad').value.trim();
-  r.novedad=novedad; r.updatedAt=now();
+  // BUG 5 FIX: guardar valores previos para rollback
+  const prev = { novedad: r.novedad, updatedAt: r.updatedAt };
   setSyncStatus('loading');
   try{
-    const payload=encodeURIComponent(JSON.stringify({action:'updateNovedad',id:r.id,novedad}));
-    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=updateNovedad&payload='+payload);
+    await api('PUT', '/api/cajas/'+r.id, {
+      cliente:r.cliente, direccion:r.llavero, alarma:r.alarma, novedad
+    });
+    // Solo mutar si la API confirmó
+    r.novedad=novedad; r.updatedAt=now();
     setSyncStatus('ok'); toast(novedad?'Novedad guardada':'Novedad borrada','success');
-  }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
-  closeModal('modal-novedad'); updateStats(); renderList(); renderDetail();
+    closeModal('modal-novedad'); updateStats(); renderList(); renderDetail();
+  }catch(e){
+    // Rollback — datos sin cambio
+    r.novedad=prev.novedad; r.updatedAt=prev.updatedAt;
+    setSyncStatus('err');toast('Error al guardar','error');
+  }
 }
 
 // ─── EDIT ────────────────────────────────────────────────────────────────────
@@ -1114,18 +1116,25 @@ function openEditModal(id) {
 async function saveEdit() {
   const id=document.getElementById('edit-id').value;
   const r=db.find(x=>x.id===id);
-  r.alarma=document.getElementById('edit-alarma').value.trim();
-  r.cliente=document.getElementById('edit-cliente').value.trim();
-  r.llavero=document.getElementById('edit-llavero').value.trim();
-  r.transporte=document.getElementById('edit-transporte').value.trim();
-  r.updatedAt=now();
+  // BUG 5 FIX: leer nuevos valores sin mutar r todavía
+  const nuevos = {
+    alarma: document.getElementById('edit-alarma').value.trim(),
+    cliente: document.getElementById('edit-cliente').value.trim(),
+    llavero: document.getElementById('edit-llavero').value.trim(),
+    transporte: document.getElementById('edit-transporte').value.trim(),
+  };
   setSyncStatus('loading');
   try{
-    const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
+    await api('PUT', '/api/cajas/'+id, {
+      cliente:nuevos.cliente, direccion:nuevos.llavero, alarma:nuevos.alarma, novedad:r.novedad
+    });
+    // Solo mutar si la API confirmó
+    r.alarma=nuevos.alarma; r.cliente=nuevos.cliente;
+    r.llavero=nuevos.llavero; r.transporte=nuevos.transporte;
+    r.updatedAt=now();
     setSyncStatus('ok'); toast('Registro actualizado','success');
+    closeModal('modal-edit'); renderList(); renderDetail();
   }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
-  closeModal('modal-edit'); renderList(); renderDetail();
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
@@ -1138,28 +1147,42 @@ async function createRecord() {
   const id=document.getElementById('new-id').value.trim().toUpperCase();
   if(!id){toast('ID requerido','warning');return;}
   if(db.find(r=>r.id===id)){toast('ID ya existe','warning');return;}
-  const r={id,cliente:document.getElementById('new-cliente').value.trim(),llavero:document.getElementById('new-llavero').value.trim(),alarma:document.getElementById('new-alarma').value.trim(),transporte:document.getElementById('new-transporte').value.trim(),novedad:document.getElementById('new-novedad').value.trim(),updatedAt:now()};
-  db.unshift(r);
+  const nueva={
+    parid:id,
+    cliente:document.getElementById('new-cliente').value.trim(),
+    direccion:document.getElementById('new-llavero').value.trim(),
+    alarma:document.getElementById('new-alarma').value.trim(),
+    novedad:document.getElementById('new-novedad').value.trim()
+  };
   setSyncStatus('loading');
   try{
-    const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
+    // BUG 4 FIX: api() ya lanza excepción si res.ok es false
+    await api('POST', '/api/cajas', nueva);
+    // Solo actualizar UI si la API confirmó
+    db.unshift({id,cliente:nueva.cliente,llavero:nueva.direccion,alarma:nueva.alarma,transporte:'',novedad:nueva.novedad,updatedAt:now()});
     setSyncStatus('ok'); toast(`Registro ${id} creado`,'success');
-  }catch(e){setSyncStatus('err');toast('Error al guardar','error');}
-  closeModal('modal-new'); updateStats(); renderList(); selectRecord(id);
+    closeModal('modal-new'); updateStats(); renderList(); selectRecord(id);
+  }catch(e){
+    setSyncStatus('err');
+    toast('Error: '+e.message,'error');
+    // Modal queda abierto para que el usuario reintente
+  }
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 async function deleteRecord(id) {
   if(!confirm(`¿Eliminar ${id}?`)) return;
-  db=db.filter(r=>r.id!==id); selectedId=null;
   setSyncStatus('loading');
   try{
-    const payload=encodeURIComponent(JSON.stringify({action:'save',rows:db}));
-    await jsonp(SHEET_URL+'?token='+TOKEN+'&action=save&payload='+payload);
+    // BUG 3 FIX: primero confirmar con la API, luego borrar localmente
+    await api('DELETE', '/api/cajas/'+id);
+    db=db.filter(r=>r.id!==id); selectedId=null;
     setSyncStatus('ok'); toast('Eliminado','warning');
-  }catch(e){setSyncStatus('err');}
-  updateStats(); renderList(); renderDetail();
+    updateStats(); renderList(); renderDetail();
+  }catch(e){
+    setSyncStatus('err');
+    toast('Error al eliminar. El registro no fue borrado.','error');
+  }
 }
 
 // ─── QR ──────────────────────────────────────────────────────────────────────
@@ -1207,20 +1230,27 @@ async function checkScanMode() {
   const scanId=params.get('scan');
   if(!scanId) return;
 
+  // BUG 2 FIX: construir DOM con textContent en lugar de inyectar scanId en innerHTML/onclick
+  const decodedId = decodeURIComponent(scanId);
   document.body.className='scan-mode';
   document.body.innerHTML=`
     <div class="scan-label">🔐 Gestión de Claves</div>
     <div class="legajo-screen">
       <div class="legajo-title">Ingresá tu legajo</div>
-      <div class="legajo-sub">Caja: <strong style="color:#4f8ef7;font-family:monospace">${decodeURIComponent(scanId)}</strong></div>
+      <div class="legajo-sub">Caja: <strong id="scan-caja-id" style="color:#4f8ef7;font-family:monospace"></strong></div>
       <input class="legajo-input" type="number" id="legajo-input" placeholder="000000000" autofocus>
-      <button class="legajo-btn" onclick="validarLegajo('${scanId}')">Validar ›</button>
+      <button class="legajo-btn" id="btn-validar">Validar ›</button>
       <div class="legajo-loading" id="legajo-status"></div>
     </div>
     <div class="scan-dot"></div>
   `;
+  // Usar textContent para el ID — nunca se interpreta como HTML
+  document.getElementById('scan-caja-id').textContent = decodedId;
+  // Usar addEventListener en lugar de onclick inline con scanId
+  const doValidar = () => validarLegajo(scanId);
+  document.getElementById('btn-validar').addEventListener('click', doValidar);
   document.getElementById('legajo-input').addEventListener('keydown', e=>{
-    if(e.key==='Enter') validarLegajo('${scanId}');
+    if(e.key==='Enter') doValidar();
   });
 }
 
@@ -1229,8 +1259,8 @@ async function validarLegajo(scanId) {
   if(!legajo){document.getElementById('legajo-status').textContent='Ingresá tu legajo';return;}
   document.getElementById('legajo-status').textContent='Validando…';
   try {
-    const payload=encodeURIComponent(JSON.stringify({action:'validar',parid:decodeURIComponent(scanId),legajo}));
-    const res=await jsonp(SHEET_URL+'?token='+TOKEN+'&action=validar&payload='+payload);
+    // BUG 1 FIX: incluir legajo en el body
+    const res = await api('POST', '/api/validar', { parid: decodeURIComponent(scanId), legajo });
 
     if(!res.ok||!res.autorizado){
       document.body.innerHTML=`
@@ -1286,8 +1316,8 @@ let intentosTimer = null;
 async function loadIntentos() {
   loadBloqueos();
   try {
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getIntentos');
-    intentos = res.data || [];
+    const res = await api('GET', '/api/intentos');
+    intentos = res.intentos || [];
     renderIntentos();
   } catch(e) {
     console.error('Error cargando intentos', e);
@@ -1297,9 +1327,9 @@ async function loadIntentos() {
 // ─── BLOQUEOS ─────────────────────────────────────────────────────────────────
 async function loadBloqueos() {
   try {
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getBloqueos');
+    const res = await api('GET', '/api/bloqueos');
     if (!res.ok) return;
-    renderBloqueos(res.data || []);
+    renderBloqueos(res.bloqueos || []);
   } catch(e) {}
 }
 
@@ -1338,19 +1368,18 @@ function renderBloqueos(data) {
     </div>`;
 }
 
-async function desbloquear(parid) {
-  if (!confirm(`¿Desbloquear "${parid}"?`)) return;
+async function desbloquear(id) {
+  if (!confirm(`¿Desbloquear?`)) return;
   try {
-    const payload = encodeURIComponent(JSON.stringify({ action:'desbloquear', parid }));
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=desbloquear&payload='+payload);
+    const res = await api('DELETE', '/api/bloqueos/'+id);
     if (res.ok) {
-      showToast('🔓 ' + parid + ' desbloqueado', 'success');
+      toast('🔓 Desbloqueado', 'success');
       loadBloqueos();
     } else {
-      showToast('Error al desbloquear', 'error');
+      toast('Error al desbloquear', 'error');
     }
   } catch(e) {
-    showToast('Error de conexión', 'error');
+    toast('Error de conexión', 'error');
   }
 }
 
@@ -1420,8 +1449,14 @@ function startIntentosAutoRefresh() {
 async function loadHistorial() {
   document.getElementById('hist-table-container').innerHTML = '<div style="color:var(--text3);font-size:13px">Cargando…</div>';
   try {
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getHistorial');
-    historial = res.data || [];
+    const res = await api('GET', '/api/historial?limit=100');
+    historial = (res.historial||[]).map(h=>({
+      parid:    h.detalle?.parid || '',
+      jefe:     h.usuario || '',
+      resultado: h.accion || '',
+      timestamp: h.timestamp,
+      motivo:   h.detalle?.motivo || ''
+    }));
     renderHistorial();
   } catch(e) {
     document.getElementById('hist-table-container').innerHTML = '<div style="color:var(--danger);font-size:13px">Error al cargar historial</div>';
@@ -1490,25 +1525,30 @@ function toggleAlarma(uid) {
 }
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
-let claveActual = '';
-
 async function initLogin() {
-  if (window.location.search.includes('scan=')) {
-    document.getElementById('login-overlay').style.display = 'none';
-    return;
-  }
-  const sesion = sessionStorage.getItem('gdc_auth');
-  if (sesion === 'ok') {
+  // BUG 8 FIX: localStorage persiste entre pestañas, sessionStorage no
+  const token = localStorage.getItem('admin_token');
+  if (token) {
+    adminToken = token;
     document.getElementById('login-overlay').style.display = 'none';
     loadAll();
     return;
   }
-  try {
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getConfig');
-    if (res.ok && res.config && res.config.clave) claveActual = res.config.clave;
-  } catch(e) { claveActual = ''; }
   document.getElementById('login-overlay').style.display = 'flex';
-  setTimeout(() => document.getElementById('login-input').focus(), 100);
+  // Cambiar label para pedir usuario y contraseña
+  document.getElementById('login-sub').textContent = 'Ingresá usuario y contraseña';
+  // Agregar campo usuario si no existe
+  if (!document.getElementById('login-username')) {
+    const passInput = document.getElementById('login-input');
+    const userInput = document.createElement('input');
+    userInput.id = 'login-username';
+    userInput.className = 'login-input';
+    userInput.type = 'text';
+    userInput.placeholder = 'Usuario';
+    userInput.style.letterSpacing = '0';
+    passInput.parentNode.insertBefore(userInput, passInput);
+  }
+  setTimeout(() => document.getElementById('login-username').focus(), 100);
 }
 
 function toggleLoginEye() {
@@ -1523,18 +1563,33 @@ function toggleLoginEye() {
   }
 }
 
-function checkLogin() {
-  const input = document.getElementById('login-input').value.trim();
+async function checkLogin() {
+  const username = (document.getElementById('login-username')?.value||'').trim();
+  const password = document.getElementById('login-input').value.trim();
   const errEl = document.getElementById('login-error');
-  if (!claveActual) { errEl.textContent = 'Error al obtener clave. Recargá.'; return; }
-  if (input === claveActual) {
-    sessionStorage.setItem('gdc_auth', 'ok');
-    document.getElementById('login-overlay').style.display = 'none';
-    loadAll();
-  } else {
-    errEl.textContent = 'Contraseña incorrecta';
-    document.getElementById('login-input').value = '';
-    document.getElementById('login-input').focus();
+  if (!username || !password) { errEl.textContent = 'Ingresá usuario y contraseña'; return; }
+  errEl.textContent = 'Verificando…';
+  try {
+    const res = await fetch(API_URL + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.ok && data.token) {
+      adminToken = data.token;
+      // BUG 8 FIX: localStorage persiste entre pestañas
+      localStorage.setItem('admin_token', data.token);
+      document.getElementById('login-overlay').style.display = 'none';
+      loadAll();
+    } else {
+      errEl.textContent = data.error || 'Usuario o contraseña incorrectos';
+      document.getElementById('login-input').value = '';
+      document.getElementById('login-input').focus();
+      setTimeout(() => errEl.textContent = '', 3000);
+    }
+  } catch(e) {
+    errEl.textContent = 'Error de conexión';
     setTimeout(() => errEl.textContent = '', 3000);
   }
 }
@@ -1613,23 +1668,28 @@ function handleQRResult(raw) {
     const url = new URL(raw);
     scanId = url.searchParams.get('scan') || raw;
   } catch(e) {}
-  scanId = decodeURIComponent(scanId).trim();
+  // BUG 2 FIX: NO hacer decodeURIComponent aquí — se hace en validarLegajo
+  // Mantener scanId encoded para pasarlo seguro a la función
+  const displayId = decodeURIComponent(scanId).trim();
 
-  // Abrir pantalla de validación de legajo
+  // BUG 2 FIX: construir DOM con textContent en lugar de inyectar scanId en innerHTML/onclick
   document.body.className = 'scan-mode';
   document.body.innerHTML = `
     <div class="scan-label">🔐 BRINKS KEYS</div>
     <div class="legajo-screen">
       <div class="legajo-title">Ingresá tu legajo</div>
-      <div class="legajo-sub">Caja: <strong style="color:#4f8ef7;font-family:monospace">${scanId}</strong></div>
+      <div class="legajo-sub">Caja: <strong id="scan-caja-id" style="color:#4f8ef7;font-family:monospace"></strong></div>
       <input class="legajo-input" type="number" id="legajo-input" placeholder="000000000" autofocus>
-      <button class="legajo-btn" onclick="validarLegajo('${scanId}')">Validar ›</button>
+      <button class="legajo-btn" id="btn-validar-qr">Validar ›</button>
       <div class="legajo-loading" id="legajo-status"></div>
     </div>
     <div class="scan-dot"></div>
   `;
+  document.getElementById('scan-caja-id').textContent = displayId;
+  const doValidar = () => validarLegajo(scanId);
+  document.getElementById('btn-validar-qr').addEventListener('click', doValidar);
   document.getElementById('legajo-input').addEventListener('keydown', e => {
-    if(e.key==='Enter') validarLegajo('${scanId}');
+    if(e.key==='Enter') doValidar();
   });
 }
 
@@ -1747,12 +1807,12 @@ function updateEstadoHorario(inicio, fin, dias) {
 
 async function loadHorario() {
   try {
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=getConfig');
-    if (!res.ok) return;
-    const cfg = res.config || {};
-    const inicio = cfg.horario_inicio || '05:00';
-    const fin = cfg.horario_fin || '21:00';
-    const dias = cfg.dias_activos || '';
+    const res = await api('GET', '/api/horario');
+    if (!res.ok || !res.horario) return;
+    const h = res.horario;
+    const inicio = h.hora_inicio?.slice(0,5) || '06:00';
+    const fin    = h.hora_fin?.slice(0,5)    || '20:00';
+    const dias   = (h.dias_activos||[]).join(',');
 
     document.getElementById('hor-inicio').value = inicio;
     document.getElementById('hor-fin').value = fin;
@@ -1768,27 +1828,21 @@ async function loadHorario() {
 }
 
 async function saveHorario() {
-  const inicio = document.getElementById('hor-inicio').value || '05:00';
-  const fin = document.getElementById('hor-fin').value || '21:00';
+  const inicio = document.getElementById('hor-inicio').value || '06:00';
+  const fin    = document.getElementById('hor-fin').value    || '20:00';
   if (inicio >= fin) {
     showToast('La hora de inicio debe ser menor que la de fin', 'error');
     return;
   }
-  const sorted = [...diasSeleccionados].sort((a,b) => {
-    const pa = a.split('/'); const pb = b.split('/');
-    return new Date(pa[2],pa[1]-1,pa[0]) - new Date(pb[2],pb[1]-1,pb[0]);
-  });
-  const payload = encodeURIComponent(JSON.stringify({
-    action: 'saveHorario',
-    horario_inicio: inicio,
-    horario_fin: fin,
-    dias_activos: sorted.join(',')
-  }));
   try {
-    const res = await jsonp(SHEET_URL + '?token='+TOKEN+'&action=saveHorario&payload='+payload);
+    const res = await api('PUT', '/api/horario', {
+      hora_inicio: inicio,
+      hora_fin: fin,
+      dias_activos: [...diasSeleccionados]
+    });
     if (res.ok) {
       showToast('Horario guardado ✓', 'success');
-      updateEstadoHorario(inicio, fin, sorted.join(','));
+      updateEstadoHorario(inicio, fin, [...diasSeleccionados].join(','));
     } else {
       showToast('Error al guardar: ' + (res.error||''), 'error');
     }
@@ -1875,14 +1929,16 @@ function renderCompusafeProg() {
 
 async function loadCompusafe() {
   try {
-    const res = await jsonp(SHEET_URL + '?token=' + TOKEN + '&action=getCompusafe');
-    if (res.ok && res.data && res.data.length > 0) {
-      csfData = res.data;
+    const res = await api('GET', '/api/compusafe');
+    if (res.ok && res.compusafe) {
+      const c = res.compusafe;
+      csfData = [{
+        clave: c.clave_activa,
+        semana: c.semana,
+        n_sobre: c.n_sobre
+      }];
     } else {
-      // Hoja vacía → cargar defaults y guardarlos automáticamente en Sheets
       csfData = CSF_DEFAULT.map(r => ({...r}));
-      const payload = encodeURIComponent(JSON.stringify({ action: 'saveCompusafe', rows: csfData }));
-      await jsonp(SHEET_URL + '?token=' + TOKEN + '&action=saveCompusafe&payload=' + payload);
     }
   } catch(e) {
     csfData = CSF_DEFAULT.map(r => ({...r}));
@@ -1938,9 +1994,12 @@ async function saveClaveCompusafe() {
   csfData[idx].clave = clave;
   csfData[idx].n_sobre = sobre;
 
-  const payload = encodeURIComponent(JSON.stringify({ action: 'saveCompusafe', rows: csfData }));
   try {
-    const res = await jsonp(SHEET_URL + '?token=' + TOKEN + '&action=saveCompusafe&payload=' + payload);
+    const res = await api('POST', '/api/compusafe', {
+      clave_activa: clave,
+      semana: csfData[idx].semana,
+      n_sobre: sobre
+    });
     if (res.ok) {
       closeModal('modal-csf-edit');
       showToast('Clave actualizada ✓', 'success');
