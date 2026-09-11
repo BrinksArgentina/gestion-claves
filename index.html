@@ -1534,9 +1534,12 @@ async function initLogin() {
     loadAll();
     return;
   }
-  document.getElementById('login-overlay').style.display = 'flex';
+  const loginOverlay = document.getElementById('login-overlay');
+  if (!loginOverlay) return; // DOM reemplazado por checkScanMode, salir
+  loginOverlay.style.display = 'flex';
   // Cambiar label para pedir usuario y contraseña
-  document.getElementById('login-sub').textContent = 'Ingresá usuario y contraseña';
+  const loginSub = document.getElementById('login-sub');
+  if (loginSub) loginSub.textContent = 'Ingresá usuario y contraseña';
   // Agregar campo usuario si no existe
   if (!document.getElementById('login-username')) {
     const passInput = document.getElementById('login-input');
