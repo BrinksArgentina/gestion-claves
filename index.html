@@ -745,7 +745,8 @@ function renderDetail() {
   const dv = document.getElementById('detail-view');
   dv.style.display='flex';
 
-  const qrUrl = `${GITHUB_URL}?scan=${encodeURIComponent(r.id)}`;
+  const scannerUrl = 'https://brinksargentina.github.io/gestion-claves/scanner.html';
+  const qrUrl = `${scannerUrl}?scan=${encodeURIComponent(r.id)}`;
   const progEntry = programacion.find(p=>String(p.parid).trim()===r.id);
   const alarmaUid = 'det_' + r.id;
   const alarmaHtml = r.alarma
