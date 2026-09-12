@@ -1057,14 +1057,22 @@ function importExcel(input) {
         else{db.push(reg);nuevos++;}
       });
       setSyncStatus('loading');
-      // Subir cajas nuevas al backend
+      // Subir cajas al backend: POST para nuevas, PUT para existentes
       for (const caja of db) {
         try {
           await api('PUT', '/api/cajas/'+caja.id, {
             cliente: caja.cliente, direccion: caja.llavero,
             alarma: caja.alarma, novedad: caja.novedad
           });
-        } catch(e) {}
+        } catch(e) {
+          try {
+            await api('POST', '/api/cajas', {
+              parid: caja.id, cliente: caja.cliente,
+              direccion: caja.llavero, alarma: caja.alarma,
+              novedad: caja.novedad
+            });
+          } catch(e2) {}
+        }
       }
       setSyncStatus('ok');
       updateStats();renderList();
