@@ -1014,11 +1014,16 @@ async function procesarProgramacion() {
           tipo_cambio: esCambio ? 'Cambio de jefe' : 'Carga inicial'
         };
       });
-      // 3. Guardar SOLO los cambios reales en historial (no cargas iniciales repetidas)
-      const solocambios = cambios.filter(c => c.tipo_cambio === 'Cambio de jefe');
-      if (solocambios.length > 0) {
+      // 3. Guardar en historial:
+      // - Si no había programación previa (primera carga) → guardar todo como "Carga inicial"
+      // - Si había programación → guardar solo los cambios reales de JE
+      const esPrimeraCarga = programacion.length === 0;
+      const itemsAGuardar = esPrimeraCarga
+        ? cambios  // primera carga: guardar todo
+        : cambios.filter(c => c.tipo_cambio === 'Cambio de jefe'); // subsiguientes: solo cambios
+      if (itemsAGuardar.length > 0) {
         try {
-          await api('POST', '/api/historial/recaudaciones', { items: solocambios });
+          await api('POST', '/api/historial/recaudaciones', { items: itemsAGuardar });
         } catch(e) { console.warn('Error guardando historial:', e.message); }
       }
 
