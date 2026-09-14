@@ -1013,10 +1013,13 @@ async function procesarProgramacion() {
           tipo_cambio: esCambio ? 'Cambio de jefe' : 'Carga inicial'
         };
       });
-      // 3. Guardar cambios en historial de recaudaciones
-      try {
-        await api('POST', '/api/historial/recaudaciones', { items: cambios });
-      } catch(e) { console.warn('Error guardando historial:', e.message); }
+      // 3. Guardar SOLO los cambios reales en historial (no cargas iniciales repetidas)
+      const solocambios = cambios.filter(c => c.tipo_cambio === 'Cambio de jefe');
+      if (solocambios.length > 0) {
+        try {
+          await api('POST', '/api/historial/recaudaciones', { items: solocambios });
+        } catch(e) { console.warn('Error guardando historial:', e.message); }
+      }
 
       programacion = rowsTotal;
       updateStats();
