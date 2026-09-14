@@ -979,10 +979,11 @@ async function procesarProgramacion() {
       const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
       const legObj = jefe ? legajos.find(l => matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||'')) : null;
       const legajo_jefe = legObj ? String(legObj.legajo||legObj['Legajo']||'') : '';
-      return { parid:c.parid, rutid, fecha:fISO(c.fecha||''), jefe, legajo_jefe, parada:c.parada||'' };
+      return { parid:c.parid, rutid, fecha:fISO(c.fecha||'')||new Date().toISOString().slice(0,10), jefe, legajo_jefe, parada:c.parada||'' };
     }).filter(r=>r.jefe && r.legajo_jefe);
 
-  const rowsTotal = [...rows, ...rowsCompusafe];
+  // Filtrar items sin fecha válida antes de mandar al bulk
+  const rowsTotal = [...rows, ...rowsCompusafe].filter(r => r.fecha && r.fecha.length === 10);
 
   document.getElementById('prog-status').textContent = `Procesando ${rowsTotal.length} registros…`;
   try {
