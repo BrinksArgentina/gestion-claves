@@ -670,7 +670,11 @@ async function loadAll() {
     legajos = r2.legajos||[];
     programacion = (r3.programacion||[]).map(p=>({
       parid: p.parid, legajo: p.legajo, fecha: p.fecha,
-      nombre: p.nombre_jefe, cliente: p.cliente
+      nombre: p.nombre_jefe, cliente: p.cliente,
+      jefe: p.nombre_jefe || '—',
+      legajo_jefe: p.legajo || '',
+      rutid: p.rutaid || '—',
+      parada: p.parada || '—'
     }));
     setSyncStatus('ok');
     updateStats(); renderList(); renderProgTable(); renderLegajosTable();
