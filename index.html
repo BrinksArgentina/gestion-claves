@@ -984,20 +984,18 @@ async function procesarProgramacion() {
     const res = await api('POST', '/api/programacion/bulk', { items: rowsTotal });
     if(res.ok){
       // 2. Detectar cambios de JE respecto a la programación anterior
-      // Convertir fecha dd/mm/yyyy a yyyy-mm-dd para PostgreSQL
-      const fechaRaw = rowsTotal[0]?.fecha || '';
-      let hoy;
-      if (fechaRaw && fechaRaw.includes('/')) {
-        const [d,m,y] = fechaRaw.split('/');
-        hoy = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-      } else {
-        hoy = fechaRaw || new Date().toISOString().slice(0,10);
-      }
+      // Función para convertir fecha dd/mm/yyyy a yyyy-mm-dd para PostgreSQL
+      const toISO = (f) => {
+        if (!f) return new Date().toISOString().slice(0,10);
+        if (f.includes('/')) { const [d,m,y]=f.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; }
+        return f;
+      };
+      const hoy = toISO(rowsTotal[0]?.fecha);
       const cambios = rowsTotal.map(r => {
         const anterior = programacion.find(p => p.parid === r.parid);
         const esCambio = anterior && anterior.jefe && anterior.jefe !== r.jefe;
         return {
-          fecha: hoy,
+          fecha: toISO(r.fecha) || hoy,
           parid: r.parid,
           rutaid: r.rutid || '',
           parada: r.parada || '',
