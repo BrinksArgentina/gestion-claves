@@ -1000,9 +1000,8 @@ async function procesarProgramacion() {
       const hoy = toISO(rowsTotal[0]?.fecha);
       const cambios = rowsTotal.map(r => {
         const anterior = programacion.find(p => p.parid === r.parid);
-        // Normalizar nombres para comparar (quitar espacios extra, mayúsculas)
-        const normJefe = (n) => (n||'').replace(/\s+/g,' ').replace(/\s*,\s*/g,',').trim().toUpperCase();
-        const esCambio = anterior && anterior.jefe && normJefe(anterior.jefe) !== normJefe(r.jefe);
+        // Comparar por legajo — solo registrar cambio si ambos legajos son conocidos y distintos
+        const esCambio = anterior && anterior.legajo_jefe && r.legajo_jefe && anterior.legajo_jefe !== r.legajo_jefe;
         return {
           fecha: toISO(r.fecha) || hoy,
           parid: r.parid,
