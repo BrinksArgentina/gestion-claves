@@ -955,6 +955,8 @@ function matchNombre(nombreReporte, nombreLegajo) {
 // ─── PROCESAR PROGRAMACION ────────────────────────────────────────────────────
 async function procesarProgramacion() {
   if(!diarioData||!reporteData) return;
+  // Convertir fecha dd/mm/yyyy a yyyy-mm-dd para PostgreSQL
+  const fISO = (f) => { if(!f) return ''; if(f.includes('/')) { const [dd,mm,yy]=f.split('/'); return `${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`; } return f; };
   // Solo procesar ParIds que existen en nuestra DB de cajas
   const misIds = new Set(db.map(r=>r.id.trim()));
   const rows = diarioData
@@ -964,7 +966,6 @@ async function procesarProgramacion() {
       const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
       const legObj = legajos.find(l=> matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||''));
       const legajo_jefe = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
-      const fISO = (f) => { if(!f) return ''; if(f.includes('/')) { const [dd,mm,yy]=f.split('/'); return `${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`; } return f; };
       return { parid:d.parid, rutid, fecha:fISO(d.fecha), jefe, legajo_jefe, parada:d.parada||'' };
     }).filter(r=>r.jefe);
 
