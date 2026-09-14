@@ -964,7 +964,8 @@ async function procesarProgramacion() {
       const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
       const legObj = legajos.find(l=> matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||''));
       const legajo_jefe = legObj ? (legObj.legajo||legObj['Legajo']||'') : '';
-      return { parid:d.parid, rutid, fecha:d.fecha, jefe, legajo_jefe, parada:d.parada||'' };
+      const fISO = (f) => { if(!f) return ''; if(f.includes('/')) { const [dd,mm,yy]=f.split('/'); return `${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`; } return f; };
+      return { parid:d.parid, rutid, fecha:fISO(d.fecha), jefe, legajo_jefe, parada:d.parada||'' };
     }).filter(r=>r.jefe);
 
   // Agregar Compusafe a la programacion
@@ -977,7 +978,7 @@ async function procesarProgramacion() {
       const jefe = reporteData[rutid] || reporteData[String(parseInt(rutid,10))] || '';
       const legObj = jefe ? legajos.find(l => matchNombre(jefe, l.nombre||l['Nombre Jefe de equipo']||'')) : null;
       const legajo_jefe = legObj ? String(legObj.legajo||legObj['Legajo']||'') : '';
-      return { parid:c.parid, rutid, fecha:c.fecha||'', jefe, legajo_jefe, parada:c.parada||'' };
+      return { parid:c.parid, rutid, fecha:fISO(c.fecha||''), jefe, legajo_jefe, parada:c.parada||'' };
     }).filter(r=>r.jefe && r.legajo_jefe);
 
   const rowsTotal = [...rows, ...rowsCompusafe];
